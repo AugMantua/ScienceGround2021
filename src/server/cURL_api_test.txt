@@ -1,0 +1,27 @@
+
+ADD Measure
+
+curl --location --request GET '127.0.0.1:4000/data/add' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "Data" : 
+    [
+        {
+            "SensorID": "Termo_1",
+            "Value": "21.5",
+            "Timestamp": "10:10:00"
+        },
+        {
+            "SensorID": "Termo_2",
+            "Value": "22.5",
+            "Timestamp": "10:10:00"
+        },
+        {
+            "SensorID": "Humidity_1",
+            "Value": "75",
+            "Timestamp": "10:10:00"
+        }
+    ]
+ }
+'
+

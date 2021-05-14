@@ -8,9 +8,12 @@ import (
 
 func main() {
 	//DB related
-	dataDBinit(_DB_NAME)
+	SqliteDB := dataDBinit(_DB_NAME)
+	//Closes db at the end of main
+	defer SqliteDB.Close()
+	//
 	mux := http.NewServeMux()
-	mux.HandleFunc("/data/add", AddRead)
+	mux.HandleFunc("/data/add", AddMeasure(SqliteDB))
 	fmt.Println("Serving on port 4000")
 	err := http.ListenAndServe(":4000", mux)
 	log.Fatal(err)
