@@ -23,14 +23,14 @@ type MeasureData struct {
 }
 
 type terrariumData struct {
-	terrariumID     string
-	typeOfTerrarium string
+	TerrariumID     string
+	TypeOfTerrarium string
 }
 
 type sensorData struct {
-	sensorID      string
-	typeOfMeasure string
-	extra_data    string
+	SensorID      string
+	YypeOfMeasure string
+	Extra_data    string
 }
 
 type request_data struct {
