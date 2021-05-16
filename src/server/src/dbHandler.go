@@ -29,7 +29,7 @@ type terrariumData struct {
 
 type sensorData struct {
 	SensorID      string
-	YypeOfMeasure string
+	TypeOfMeasure string
 	Extra_data    string
 }
 
