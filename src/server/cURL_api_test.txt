@@ -1,22 +1,25 @@
 
 ADD Measure
 
-curl --location --request GET '127.0.0.1:4000/data/add' \
+curl --location --request GET '127.0.0.1:4000/data/measures/add' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "Data" : 
     [
         {
+            "TerrariumID": "Terrain_1",
             "SensorID": "Termo_1",
             "Value": "21.5",
             "Timestamp": "10:10:00"
         },
         {
+            "TerrariumID": "Terrain_1",
             "SensorID": "Termo_2",
             "Value": "22.5",
             "Timestamp": "10:10:00"
         },
         {
+            "TerrariumID": "Terrain_1",
             "SensorID": "Humidity_1",
             "Value": "75",
             "Timestamp": "10:10:00"
@@ -25,3 +28,14 @@ curl --location --request GET '127.0.0.1:4000/data/add' \
  }
 '
 
+REQUEST Measures
+
+curl --location --request GET '127.0.0.1:4000/data/measures/get' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "TerrariumID": "Terrain_1",
+    "From": "-",
+    "To": "-",
+    "SensorID": "-"
+ }
+'

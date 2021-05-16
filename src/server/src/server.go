@@ -13,7 +13,8 @@ func main() {
 	defer SqliteDB.Close()
 	//
 	mux := http.NewServeMux()
-	mux.HandleFunc("/data/add", AddMeasure(SqliteDB))
+	mux.HandleFunc("/data/measures/add", AddMeasure(SqliteDB))
+	mux.HandleFunc("/data/measures/get", RequestMeasures(SqliteDB))
 	fmt.Println("Serving on port 4000")
 	err := http.ListenAndServe(":4000", mux)
 	log.Fatal(err)

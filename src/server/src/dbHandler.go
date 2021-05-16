@@ -15,13 +15,6 @@ var _DB_TABLES = []string{
 	"terrariums",
 }
 
-type MeasureData struct {
-	TerrariumID string
-	SensorID    string
-	Value       string
-	Timestamp   string
-}
-
 type terrariumData struct {
 	TerrariumID     string
 	TypeOfTerrarium string
@@ -33,8 +26,15 @@ type sensorData struct {
 	Extra_data    string
 }
 
-type request_data struct {
-	Data []MeasureData
+type single_measure_data struct {
+	TerrariumID string
+	SensorID    string
+	Value       string
+	Timestamp   string
+}
+
+type measures_data struct {
+	Data []single_measure_data
 }
 
 func InitNewDBFile() {
@@ -112,15 +112,15 @@ func CreateDBTables(db *sql.DB) {
 	log.Println("Terrariums table created")
 }
 
-func insertMeasure(db *sql.DB, sensorID string, value string, timestamp string) {
+func insertMeasure(db *sql.DB, measure single_measure_data) {
 	log.Println("Inserting measure record")
-	insertMeasureSQL := `INSERT INTO measures(sensorID, value, timestamp) VALUES (?, ?, ?)`
+	insertMeasureSQL := `INSERT INTO measures(terrariumID, sensorID, value, timestamp) VALUES (?,?, ?, ?)`
 	statement, err := db.Prepare(insertMeasureSQL) // Prepare statement.
 	// This is good to avoid SQL injections
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
-	_, err = statement.Exec(sensorID, value, timestamp)
+	_, err = statement.Exec(measure.TerrariumID, measure.SensorID, measure.Value, measure.Timestamp)
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
@@ -140,4 +140,27 @@ func dataDBinit(dbPath string) *sql.DB {
 		CreateDBTables(sqliteDatabase)
 	}
 	return sqliteDatabase
+}
+
+/*Extract measures*/
+func getMeasures(db *sql.DB, request measures_request_typ) []single_measure_data {
+	var measures []single_measure_data
+	/*Measures*/
+	getMeasure := `SELECT terrariumID, sensorID, timestamp, value from measures where 
+		terrariumID = ? 
+	;`
+	statement, err := db.Prepare(getMeasure) // Prepare SQL Statement
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	row, err_r := statement.Query(request.TerrariumID) // Execute SQL Statements
+	if err_r != nil {
+		log.Fatal((err_r.Error()))
+	}
+	for row.Next() {
+		var measure single_measure_data
+		row.Scan(&measure.TerrariumID, &measure.SensorID, &measure.Timestamp, &measure.Value)
+		measures = append(measures, measure)
+	}
+	return measures
 }
