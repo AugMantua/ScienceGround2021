@@ -16,7 +16,7 @@ var _DB_TABLES = []string{
 }
 
 type MeasureData struct {
-	terrariumID string
+	TerrariumID string
 	SensorID    string
 	Value       string
 	Timestamp   string
