@@ -12,6 +12,7 @@
 
 <script>
   import VueApexCharts from 'vue-apexcharts';
+    import Vue from 'vue';
 
   export default {
     name: 'DashboardDashboard',
@@ -32,5 +33,10 @@
         }]
      }
     },
+    mounted () {
+    Vue.axios
+      .get('https://api.coindesk.com/v1/bpi/currentprice.json')
+      .then(response => (console.log( response)))
+    }
   }
 </script>
