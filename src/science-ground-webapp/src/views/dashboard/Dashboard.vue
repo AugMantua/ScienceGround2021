@@ -4,23 +4,22 @@
     fluid
     tag="section"
   >
-    <v-row>
-    </v-row>
+
   </v-container>
 </template>
 
 <script>
+  import VueApexCharts from 'vue-apexcharts';
+  import Vue from 'vue';
+
   export default {
     name: 'DashboardDashboard',
-
+    components: { 'apexchart': VueApexCharts},
     data () {
-      return {}
+     return{
+     }
     },
-
-    methods: {
-      complete (index) {
-        this.list[index] = !this.list[index]
-      },
-    },
+    mounted () { 
+    }
   }
 </script>
