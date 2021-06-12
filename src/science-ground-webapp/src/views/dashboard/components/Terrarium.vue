@@ -1,7 +1,7 @@
 <template>
 <v-hover v-slot="{ hover }" >
   <v-card
-    max-width="200"  :elevation="hover ? 16 : 2"
+    max-width="200"  :elevation="hover ? 16 : 2"  @click="changeModalVisibility()"
   > 
      
     <div  v-ripple="{ center: true }">
@@ -22,18 +22,21 @@
 </template>
 
 <script>
-  import Vue from 'vue';
-
+  import { EventBus } from "../../../main"
   export default {
     name: 'Terrarim',
     components: { },
     
     data () {
      return{
-    
      }
     },
     mounted () { 
+    },
+     methods:{
+      changeModalVisibility(){
+        EventBus.$emit("changeDiaalogState",true);
+      },
     }
   }
 </script>
