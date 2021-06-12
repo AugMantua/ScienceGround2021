@@ -1,11 +1,8 @@
 <template>
   <v-app>
     <dashboard-core-app-bar />
-
     <dashboard-core-drawer />
-
     <dashboard-core-view />
-
   </v-app>
 </template>
 

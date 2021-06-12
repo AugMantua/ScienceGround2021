@@ -3,19 +3,19 @@
     id="app-bar"
     absolute
     app
-    color="transparent"
+    color="primary"
     flat
-    height="75"
+    height="60"
   >
     <v-btn
-      class="mr-3"
+
       elevation="1"
       fab
       small
       @click="setDrawer(!drawer)"
     >
-      <v-icon v-if="value">
-        mdi-view-quilt
+      <v-icon v-if="drawer">
+        mdi-chevron-left
       </v-icon>
 
       <v-icon v-else>
@@ -120,3 +120,8 @@
     },
   }
 </script>
+
+<style>
+  @import '../../../../sass/variables.scss';
+
+</style>

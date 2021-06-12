@@ -18,7 +18,6 @@
       />
     </template>
 
-    <v-divider class="mb-1" />
 
     <v-list
       dense
@@ -38,7 +37,7 @@
 
         <v-list-item-content>
           <v-list-item-title
-            class="   "
+            class="align-self-center"
             v-text="profile.title"
           />
         </v-list-item-content>
@@ -55,8 +54,10 @@
       <!-- https://github.com/vuetifyjs/vuetify/pull/8574 -->
       <div />
 
-      <template v-for="(item, i) in computedItems">
+      <template v-for="(item, i) in computedItems"  color="$main-color" justify-center>
+
         <base-item-group
+          class="ma-0 pa-0"
           v-if="item.children"
           :key="`group-${i}`"
           :item="item"
@@ -66,9 +67,11 @@
 
         <base-item
           v-else
+          
           :key="`item-${i}`"
           :item="item"
         />
+
       </template>
 
       <!-- Style cascading bug  -->
@@ -98,7 +101,7 @@
       items: [
         {
           icon: 'mdi-view-dashboard',
-          title: 'dashboard',
+          title: 'Since Ground',
           to: '/',
         },
       ],
@@ -158,13 +161,16 @@
         +rtl()
           margin-left: 24px
           margin-right: 12px !important
-
+      .v-list-item__content
+        padding-top: 15px
     .v-list--dense
       .v-list-item
         &__icon--text,
         &__icon:first-child
           margin-top: 10px
-
+     
+    
+    
     .v-list-group--sub-group
       .v-list-item
         +ltr()
