@@ -111,12 +111,24 @@ func RequestMeasures(db *sql.DB) http.HandlerFunc {
 		var request measures_request_typ
 		/*Decode json content*/
 		jsonDecodeToStruct(&request, w, r)
-		/*Data decoded*/
-		fmt.Fprintf(w, "Data: %+v", request)
 		/*Extract data and send back*/
 		measures := getMeasures(db, request)
 		/*Encode to json*/
 		message, err := json.Marshal(measures)
+		if err != nil {
+			http.Error(w, "", http.StatusInternalServerError)
+			log.Fatal(err.Error())
+		}
+		w.Write(message)
+	}
+}
+
+func RequestTerrariumsList(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		/*Extract data and send back*/
+		t_terrariums := getTerrariums(db)
+		/*Encode to json*/
+		message, err := json.Marshal(t_terrariums)
 		if err != nil {
 			http.Error(w, "", http.StatusInternalServerError)
 			log.Fatal(err.Error())

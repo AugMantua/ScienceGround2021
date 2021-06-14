@@ -147,13 +147,15 @@ func getMeasures(db *sql.DB, request measures_request_typ) []single_measure_data
 	var measures []single_measure_data
 	/*Measures*/
 	getMeasure := `SELECT terrariumID, sensorID, timestamp, value from measures where 
-		terrariumID = ? 
+		terrariumID = ? AND 
+		( timestamp BETWEEN ? AND ?)
+		ORDER BY timestamp
 	;`
 	statement, err := db.Prepare(getMeasure) // Prepare SQL Statement
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	row, err_r := statement.Query(request.TerrariumID) // Execute SQL Statements
+	row, err_r := statement.Query(request.TerrariumID, request.From, request.To) // Execute SQL Statements
 	if err_r != nil {
 		log.Fatal((err_r.Error()))
 	}
@@ -163,4 +165,32 @@ func getMeasures(db *sql.DB, request measures_request_typ) []single_measure_data
 		measures = append(measures, measure)
 	}
 	return measures
+}
+
+func getTerrariums(db *sql.DB) []terrariumData {
+
+	var t_terrariums []terrariumData
+
+	t_query := `SELECT * from terrariums ;`
+
+	statement, err := db.Prepare(t_query) // Prepare SQL Statement
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	row, err_r := statement.Query() // Execute SQL Statements
+	if err_r != nil {
+		log.Fatal((err_r.Error()))
+	}
+
+	for row.Next() {
+
+		var t_terr terrariumData
+
+		row.Scan(&t_terr.TerrariumID, &t_terr.TypeOfTerrarium)
+		t_terrariums = append(t_terrariums, t_terr)
+
+	}
+
+	return t_terrariums
 }
