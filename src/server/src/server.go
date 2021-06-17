@@ -24,7 +24,7 @@ func main() {
 	mux.HandleFunc("/data/measures/add", AddMeasure(SqliteDB))
 	mux.HandleFunc("/data/measures/get", RequestMeasures(SqliteDB))
 	mux.HandleFunc("/data/terrariums/get", RequestTerrariumsList(SqliteDB))
-	fmt.Println("Serving on port 80")
-	err := http.ListenAndServe(":80", c.Handler(mux))
+	fmt.Println("Serving on port 8080")
+	err := http.ListenAndServe(":8080", c.Handler(mux))
 	log.Fatal(err)
 }
