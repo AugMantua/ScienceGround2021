@@ -3,25 +3,11 @@
     id="app-bar"
     absolute
     app
-    color="transparent"
+    color="primary"
     flat
-    height="75"
+    height="30"
   >
-    <v-btn
-      class="mr-3"
-      elevation="1"
-      fab
-      small
-      @click="setDrawer(!drawer)"
-    >
-      <v-icon v-if="value">
-        mdi-view-quilt
-      </v-icon>
 
-      <v-icon v-else>
-        mdi-dots-vertical
-      </v-icon>
-    </v-btn>
 
     <v-toolbar-title
       class="hidden-sm-and-down font-weight-light"
@@ -43,12 +29,7 @@
         nav
       >
         <div>
-          <app-bar-item
-            v-for="(n, i) in notifications"
-            :key="`item-${i}`"
-          >
-            <v-list-item-title v-text="n" />
-          </app-bar-item>
+        
         </div>
       </v-list>
     </v-menu>
@@ -100,23 +81,16 @@
     },
 
     data: () => ({
-      notifications: [
-        'Mike John Responded to your email',
-        'You have 5 new tasks',
-        'You\'re now friends with Andrew',
-        'Another Notification',
-        'Another one',
-      ],
     }),
 
     computed: {
-      ...mapState(['drawer']),
+    
     },
 
-    methods: {
-      ...mapMutations({
-        setDrawer: 'SET_DRAWER',
-      }),
-    },
   }
 </script>
+
+<style>
+  @import '../../../../sass/variables.scss';
+
+</style>

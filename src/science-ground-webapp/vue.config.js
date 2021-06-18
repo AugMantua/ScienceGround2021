@@ -1,6 +1,7 @@
 module.exports = {
   devServer: {
-    disableHostCheck: true,
+  public:'192.168.178.20:8080',
+    disableHostCheck: true
   },
 
   transpileDependencies: ['vuetify'],
