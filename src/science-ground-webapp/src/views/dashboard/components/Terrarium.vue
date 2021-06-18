@@ -43,8 +43,9 @@
 
 <style lang="sass" scoped>
     .immageSize
-        max-width: 180px
-        max-height: 180px
+        max-width: 100px
+        max-height: 100px
         object-fit: contain
+        margin: 0 auto
     
 </style>
