@@ -18,6 +18,7 @@ var _DB_TABLES = []string{
 type terrariumData struct {
 	TerrariumID     string
 	TypeOfTerrarium string
+	TerrariumAlias  string
 }
 
 type sensorData struct {
@@ -99,9 +100,11 @@ func CreateDBTables(db *sql.DB) {
 	statement.Exec() // Execute SQL Statements
 	log.Println("Sensors table created")
 	/*Terrariums*/
-	createTerrariumsTable := `CREATE TABLE terrariums (
-		"terrariumID" TEXT NOT NULL PRIMARY KEY,
-		"typeOfTerrarium" TEXT
+	createTerrariumsTable := `CREATE TABLE "terrariums" (
+		"terrariumID"	TEXT NOT NULL,
+		"typeOfTerrarium"	TEXT,
+		"terrariumAlias"	TEXT,
+		PRIMARY KEY("terrariumID")
 	);`
 	log.Println("Create Terrariums table...")
 	statement, err = db.Prepare(createTerrariumsTable) // Prepare SQL Statement
@@ -187,7 +190,7 @@ func getTerrariums(db *sql.DB) []terrariumData {
 
 		var t_terr terrariumData
 
-		row.Scan(&t_terr.TerrariumID, &t_terr.TypeOfTerrarium)
+		row.Scan(&t_terr.TerrariumID, &t_terr.TypeOfTerrarium, &t_terr.TerrariumAlias)
 		t_terrariums = append(t_terrariums, t_terr)
 
 	}
