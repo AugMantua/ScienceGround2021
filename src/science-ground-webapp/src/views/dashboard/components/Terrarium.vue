@@ -13,7 +13,7 @@
     >
      
     </v-img>
-  <v-card-title>Terrario Pippo</v-card-title>
+  <v-card-title>{{terrariumName}}</v-card-title>
   </a>
   </div>
  
@@ -26,7 +26,7 @@
   export default {
     name: 'Terrarim',
     components: { },
-    
+    props: ['terrariumName', 'terrariumId'],
     data () {
      return{
      }
