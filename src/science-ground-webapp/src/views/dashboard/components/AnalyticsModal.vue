@@ -6,11 +6,11 @@
     transition="dialog-bottom-transition"
   >
     <v-card>
-      <v-toolbar dark color="primary">
+      <v-toolbar  height="35" dark color="primary">
         <v-btn icon dark @click="isOpen = false">
           <v-icon>mdi-close</v-icon>
         </v-btn>
-        <v-toolbar-title>Settings</v-toolbar-title>
+        <v-toolbar-title class="pa-0">Andamento del terrario: {nome terrario}</v-toolbar-title>
       </v-toolbar>
 
       <v-row no-gutters>
@@ -18,9 +18,10 @@
         <v-col cols="2" v-if="!$vuetify.breakpoint.smAndDown">
             <timefilsers />
         </v-col>
-        <!-- GRAFICI -->
-        <v-col :cols="!$vuetify.breakpoint.smAndDown ? '10' : '12'">
-          <v-container class="mt-3 ml-1" elevation="1" >
+        <!-- GRAFICI --><v-col :cols="!$vuetify.breakpoint.smAndDown ? '10' : '12'">
+        <v-card  elevation="2" class="mt-3 ml-4 mr-4" >
+         
+          <v-container  >
               <v-tabs v-model="tabs"  center-active>
                  <v-tab>Temperatura</v-tab>
                  <v-tab>Umidità</v-tab>
@@ -69,7 +70,8 @@
 
           </v-container>
 
-        </v-col>
+       
+        </v-card> </v-col>
       </v-row>
     </v-card>
   </v-dialog>
