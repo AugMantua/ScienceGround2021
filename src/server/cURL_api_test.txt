@@ -30,12 +30,12 @@ curl --location --request GET '127.0.0.1:4000/data/measures/add' \
 
 REQUEST Measures
 
-curl --location --request GET '127.0.0.1:4000/data/measures/get' \
+curl --location --request GET '127.0.0.1:8080/data/measures/get' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "TerrariumID": "Terrain_1",
-    "From": "-",
-    "To": "-",
+    "From": "2010-12-29",
+    "To": "2011-01-01",
     "SensorID": "-"
  }
 '
