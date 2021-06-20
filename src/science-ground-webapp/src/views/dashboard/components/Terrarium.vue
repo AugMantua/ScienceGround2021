@@ -34,8 +34,16 @@
     mounted () { 
     },
      methods:{
+      
       changeModalVisibility(){
-        EventBus.$emit("changeDiaalogState",true);
+        let self = this;
+        EventBus.$emit("changeDiaalogState",
+          {
+            visibility: true,
+            terrariumName: self.terrariumName,
+            terrariumId: self.terrariumId
+          }
+        );
       },
     }
   }

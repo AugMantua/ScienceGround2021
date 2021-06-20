@@ -10,7 +10,7 @@
         <v-btn icon dark @click="isOpen = false">
           <v-icon>mdi-close</v-icon>
         </v-btn>
-        <v-toolbar-title class="pa-0">Andamento del terrario: {nome terrario}</v-toolbar-title>
+        <v-toolbar-title class="pa-0">Andamento del terrario: {{terrariumName}}</v-toolbar-title>
       </v-toolbar>
 
       <v-row no-gutters>
@@ -91,6 +91,8 @@ export default {
     return {
       isOpen: false,
       tabs: null,
+      terrariumName:"",
+      terrariumId:"",
      
       options: {
         chart: {
@@ -110,9 +112,12 @@ export default {
   },
 
   mounted() {
+    let self = this;
     console.log(this.$vuetify.breakpoint);
     EventBus.$on("changeDiaalogState", (value) => {
-      this.isOpen = value;
+      self.isOpen = value.visibility;
+      self.terrariumName = value.terrariumName;
+      self.terrariumId = value.terrariumId;
     });
   },
 };
