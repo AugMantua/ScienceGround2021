@@ -13,18 +13,25 @@ var _DB_TABLES = []string{
 	"measures",
 	"sensors",
 	"terrariums",
-}
-
-type terrariumData struct {
-	TerrariumID     string
-	TypeOfTerrarium string
-	TerrariumAlias  string
+	"terrariumsSensors",
 }
 
 type sensorData struct {
 	SensorID      string
 	TypeOfMeasure string
 	Extra_data    string
+}
+
+type terrariumData struct {
+	TerrariumID     string
+	TypeOfTerrarium string
+	TerrariumAlias  string
+	sensorsIds      []sensorData
+}
+
+type terrariumsSensors struct {
+	TerrariumID string
+	SensorID    string
 }
 
 type single_measure_data struct {
@@ -88,7 +95,7 @@ func CreateDBTables(db *sql.DB) {
 	log.Println("measures table created")
 	/*Sensors*/
 	createSensorTable := `CREATE TABLE sensors (
-		"sensorID" integer NOT NULL PRIMARY KEY,
+		"sensorID" TEXT NOT NULL PRIMARY KEY,
 		"typeOfMeasure" TEXT,
 		"extra_data" TEXT
 	);`
@@ -113,6 +120,19 @@ func CreateDBTables(db *sql.DB) {
 	}
 	statement.Exec() // Execute SQL Statements
 	log.Println("Terrariums table created")
+	createTerrariumsSensor := `
+	CREATE TABLE "terrariumsSensors" (
+		"terrariumID"	TEXT NOT NULL,
+		"sensorID"	TEXT NOT NULL,
+		PRIMARY KEY("sensorID","terrariumID")
+	);`
+	log.Println("Create Terrariums-Sensors table...")
+	statement, err = db.Prepare(createTerrariumsSensor) // Prepare SQL Statement
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	statement.Exec() // Execute SQL Statements
+	log.Println("Terrariums-Sensors table created")
 }
 
 func insertMeasure(db *sql.DB, measure single_measure_data) {
@@ -191,6 +211,33 @@ func getTerrariums(db *sql.DB) []terrariumData {
 		var t_terr terrariumData
 
 		row.Scan(&t_terr.TerrariumID, &t_terr.TypeOfTerrarium, &t_terr.TerrariumAlias)
+
+		t_sensors_query := `
+		SELECT sensors.sensorID, sensors.typeOfMeasure, sensors.extra_data from sensors 
+		INNER JOIN terrariumsSensors ON sensors.sensorID = terrariumsSensors.sensorID
+		WHERE terrariumID = ?
+		;`
+
+		statement, err := db.Prepare(t_sensors_query) // Prepare SQL Statement
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+		row_j, err_r := statement.Query(t_terr.TerrariumID) // Execute SQL Statements
+		if err_r != nil {
+			log.Fatal((err_r.Error()))
+		}
+
+		var t_sensors []sensorData
+
+		for row_j.Next() {
+			var t_sensor sensorData
+
+			row_j.Scan(&t_sensor.SensorID, &t_sensor.TypeOfMeasure, &t_sensor.Extra_data)
+
+			t_sensors = append(t_sensors, t_sensor)
+		}
+
+		t_terr.sensorsIds = t_sensors
 		t_terrariums = append(t_terrariums, t_terr)
 
 	}
