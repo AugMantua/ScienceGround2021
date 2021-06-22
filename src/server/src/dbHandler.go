@@ -26,7 +26,7 @@ type terrariumData struct {
 	TerrariumID     string
 	TypeOfTerrarium string
 	TerrariumAlias  string
-	sensorsIds      []sensorData
+	SensorsIds      []sensorData
 }
 
 type terrariumsSensors struct {
@@ -237,7 +237,7 @@ func getTerrariums(db *sql.DB) []terrariumData {
 			t_sensors = append(t_sensors, t_sensor)
 		}
 
-		t_terr.sensorsIds = t_sensors
+		t_terr.SensorsIds = t_sensors
 		t_terrariums = append(t_terrariums, t_terr)
 
 	}
