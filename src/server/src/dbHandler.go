@@ -171,14 +171,16 @@ func getMeasures(db *sql.DB, request measures_request_typ) []single_measure_data
 	/*Measures*/
 	getMeasure := `SELECT terrariumID, sensorID, timestamp, value from measures where 
 		terrariumID = ? AND 
-		( timestamp BETWEEN ? AND ?)
+		( timestamp BETWEEN ? AND ?) AND
+		sensorID = ?
 		ORDER BY timestamp
 	;`
+
 	statement, err := db.Prepare(getMeasure) // Prepare SQL Statement
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	row, err_r := statement.Query(request.TerrariumID, request.From, request.To) // Execute SQL Statements
+	row, err_r := statement.Query(request.TerrariumID, request.From, request.To, request.SensorID) // Execute SQL Statements
 	if err_r != nil {
 		log.Fatal((err_r.Error()))
 	}
