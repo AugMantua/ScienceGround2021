@@ -24,27 +24,17 @@
         <v-col :cols="!$vuetify.breakpoint.smAndDown ? '10' : '12'">
           <v-card elevation="2" class="mt-3 ml-4 mr-4">
             <v-container>
+              
               <v-tabs v-model="tabs" center-active>
-                <v-tab>Temperatura</v-tab>
-                <v-tab>Umidità</v-tab>
-                <v-tab>Co2</v-tab>
-                <v-tab>Luminosità</v-tab>
+                <v-tab v-for="item in terrariumSensors" :key="item.SensorID">{{item.TypeOfMeasure}}</v-tab>      
               </v-tabs>
 
               <v-tabs-items v-model="tabs">
-                <v-tab-item>
-                  <sensorchart v-bind:terrariumId="terrariumId" />
-                </v-tab-item>
-                <v-tab-item>
-                  <sensorchart v-bind:terrariumId="terrariumId" />
-                </v-tab-item>
-                <v-tab-item>
-                  <sensorchart v-bind:terrariumId="terrariumId" />
-                </v-tab-item>
-                <v-tab-item>
+                <v-tab-item v-for="item in terrariumSensors" :key="item.SensorID">
                   <sensorchart v-bind:terrariumId="terrariumId" />
                 </v-tab-item>
               </v-tabs-items>
+
             </v-container>
           </v-card>
         </v-col>
@@ -72,6 +62,7 @@ export default {
       tabs: null,
       terrariumName: "",
       terrariumId: "",
+      terrariumSensors:  []
     };
   },
 
@@ -82,6 +73,7 @@ export default {
       self.isOpen = value.visibility;
       self.terrariumName = value.terrariumName;
       self.terrariumId = value.terrariumId;
+      self.terrariumSensors = value.sensorsData;
     });
   },
 

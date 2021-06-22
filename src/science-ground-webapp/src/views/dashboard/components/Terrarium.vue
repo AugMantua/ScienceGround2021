@@ -25,7 +25,7 @@ import { EventBus } from "../../../main";
 export default {
   name: "Terrarim",
   components: {},
-  props: ["terrariumName", "terrariumId"],
+  props: ["terrariumName", "terrariumId", "terrariumSensors"],
   data() {
     return {};
   },
@@ -37,6 +37,7 @@ export default {
         visibility: true,
         terrariumName: self.terrariumName,
         terrariumId: self.terrariumId,
+        sensorsData: self.terrariumSensors
       });
     },
   },

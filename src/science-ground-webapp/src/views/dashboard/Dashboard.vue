@@ -11,8 +11,8 @@
       </v-container>
 
       <v-layout row v-if="finishLoading">
-        <v-flex class="d-flex flex-row" v-for="item in items" :key="item">
-          <terrarium class="mr-3 ml-3" v-bind:terrariumName="item.TerrariumAlias" v-bind:terrariumId="item.TerrariumID"/>
+        <v-flex class="d-flex flex-row" v-for="item in items" :key="item.TerrariumID">
+          <terrarium class="mr-3 ml-3" v-bind:terrariumName="item.TerrariumAlias" v-bind:terrariumId="item.TerrariumID" v-bind:terrariumSensors="item.SensorsIds"/>
         </v-flex>
       </v-layout>
     </div>
