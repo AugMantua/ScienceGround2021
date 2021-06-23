@@ -5,15 +5,15 @@
 </template>
 
 <script>
-
 import VueApexCharts from "vue-apexcharts";
+import Vue from "vue";
 
 export default {
   name: "SensorChart",
   components: {
     apexchart: VueApexCharts,
   },
-  props: ["sensorType", "terrariumId"],
+  props: ["sensorDatas", "terrariumId"],
   data() {
     return {
       options: {
@@ -21,25 +21,49 @@ export default {
           id: "vuechart-example",
         },
         xaxis: {
-          categories: [1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998],
+          labels: {
+            show: false,
+          },
         },
       },
       series: [
         {
           name: "series-1",
-          data: [30, 40, 45, 50, 49, 60, 70, 91],
+          data: [],
         },
       ],
     };
   },
 
   mounted() {
-    
+    let self = this;
+    self.getTerrariunDatas();
   },
 
   methods: {
     getTerrariunDatas() {
-      
+      let self = this;
+
+      let data = {
+        TerrariumId: self.terrariumId,
+        From: "2010",
+        To: "2021",
+        SensorId: self.sensorDatas.SensorID,
+      };
+
+      Vue.axios
+        .post("/data/measures/get", data)
+        .then((res) => {
+          res.data.forEach((element) => {
+            self.series[0].data.push({
+              x: element.Timestamp,
+              y: element.Value,
+            });
+          });
+        })
+        .catch((err) => {
+          console.log(err);
+        });
     },
   },
 };
