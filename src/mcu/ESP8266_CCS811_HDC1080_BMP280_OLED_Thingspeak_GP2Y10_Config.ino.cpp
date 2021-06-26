@@ -102,7 +102,7 @@ Adafruit_BMP280 bme; // I2C
 const char* owmServer = "api.openweathermap.org";  // owmServer's address
 const char* resource1 = "/data/2.5/weather?lat=";
 const char* resource2 = "&lon=";
-const char* resource3 = "&units=metric&APPID=68d53c4027df7d99745d08109dbd30ba"; // insert your API key
+const char* resource3 = "&units=metric&APPID=/*API KEY HERE*/"; // insert your API key
 
 char response[600]; // this fixed sized buffers works well for this project using the NodeMCU.
 WiFiClient client;
@@ -123,11 +123,9 @@ WiFiClient client;
 
 ESP8266WebServer webServer(80);
 
-const char* googleApiKey = "AIzaSyBvkSJNtL07ov-Pf4_hfHSfLUye4qhQjDc";
-//const char* ssid = "JamiroWiFi";
-//const char* passwd = "cicciopallino14";
-const char* ssid = "CASAMATTA";
-const char* passwd = "poterealpopolo";
+const char* googleApiKey = "/*API KEY HERE*/";
+const char* ssid = "/*SSID NAME HERE*/";
+const char* passwd = "/*SSID PWD HERE*/";
 
 WifiLocation location(googleApiKey);
 
