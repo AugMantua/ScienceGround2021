@@ -51,7 +51,7 @@
               v-on="on"
             ></v-text-field>
           </template>
-          <v-time-picker v-if="menuTimeFrom" v-model="timeFrom" full-width>
+          <v-time-picker v-if="menuTimeFrom" v-model="timeFrom" full-width format="24hr">
             <v-spacer></v-spacer>
             <v-btn text color="primary" @click="menuTimeFrom = false">
               Cancel
@@ -88,7 +88,7 @@
           </template>
           <v-date-picker v-model="dateTo" scrollable>
             <v-spacer></v-spacer>
-            <v-btn text color="primary" @click="menuDateTo = false">
+            <v-btn text color="primary" @click="menuDateTo = false" >
               Cancel
             </v-btn>
             <v-btn
@@ -118,7 +118,7 @@
               v-on="on"
             ></v-text-field>
           </template>
-          <v-time-picker v-if="menuTimeTo" v-model="timeTo" full-width>
+          <v-time-picker v-if="menuTimeTo" v-model="timeTo" full-width format="24hr" > 
             <v-spacer></v-spacer>
             <v-btn text color="primary" @click="menuTimeTo = false">
               Cancel
@@ -139,6 +139,9 @@
 
 <script>
 import Vue from "vue";
+import { EventBus } from "../../../main";
+import moment from 'moment';
+
 export default {
   name: "TimeFilters",
   components: {},
@@ -149,13 +152,40 @@ export default {
       dateFrom: new Date().toISOString().substr(0, 10),
       menuDialogFrom: false,
 
-      timeTo: null,
+      timeTo: "00:00",
       menuTimeTo: false,
-      timeFrom: null,
+      timeFrom: "00:00",
       menuTimeFrom: false,
     };
   },
-
-  mounted() {},
+  watch:{
+    menuDateTo(){
+      if(!this.menuDateTo)
+        this.changeFilter();
+    },
+    menuDialogFrom(){
+      if(!this.menuDialogFrom)
+        this.changeFilter();
+    },
+    menuTimeTo(){
+      if(!this.menuTimeTo)
+       this.changeFilter();
+    },
+    menuTimeFrom(){
+       if(!this.menuTimeFrom)
+         this.changeFilter();
+    }
+  },
+  mounted() {
+    this.changeFilter();
+  },
+  methods: {
+    changeFilter() {
+      EventBus.$emit("updateChart", {
+          to: moment(this.dateTo + " " + this.timeTo, "YYYY-MM-DD HH:mm").format("YYYYMMDDHHmm"),
+          from: moment(this.dateFrom + " " + this.timeFrom, "YYYY-MM-DD HH:mm").format("YYYYMMDDHHmm"),
+        });
+    }
+  }
 };
 </script>

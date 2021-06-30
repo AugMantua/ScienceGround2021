@@ -7,13 +7,14 @@
 <script>
 import VueApexCharts from "vue-apexcharts";
 import Vue from "vue";
+import { EventBus } from "../../../main";
 
 export default {
   name: "SensorChart",
   components: {
     apexchart: VueApexCharts,
   },
-  props: ["sensorDatas", "terrariumId"],
+  props: ["sensorDatas", "terrariumId", "dateTimeFilters"],
   data() {
     return {
       options: {
@@ -37,29 +38,40 @@ export default {
 
   mounted() {
     let self = this;
-    self.getTerrariunDatas();
+
+    EventBus.$on("updateChart", (value) => {
+      self.getTerrariunDatas(value.from, value.to);
+    });
   },
 
   methods: {
-    getTerrariunDatas() {
+    getTerrariunDatas(from, to) {
       let self = this;
 
       let data = {
         TerrariumId: self.terrariumId,
-        From: "2010",
-        To: "2021",
+        From: from,
+        To: to,
         SensorId: self.sensorDatas.SensorID,
       };
 
       Vue.axios
         .post("/data/measures/get", data)
         .then((res) => {
+          console.log(res);
+
+          let temp = [];
+
           res.data.forEach((element) => {
-            self.series[0].data.push({
+            temp.push({
               x: element.Timestamp,
               y: element.Value,
             });
           });
+
+          self.series = [{
+            data: temp
+          }]
         })
         .catch((err) => {
           console.log(err);
