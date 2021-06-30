@@ -178,6 +178,7 @@ export default {
   },
   mounted() {
     this.changeFilter();
+    this.dateFrom = moment(this.dateFrom, "YYYY-MM-DD").subtract(3, 'months').format("YYYY-MM-DD");
   },
   methods: {
     changeFilter() {
