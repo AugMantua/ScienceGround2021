@@ -1,0 +1,1 @@
+for /f %%f in ('dir /b .\cross_build_scripts\') do .\cross_build_scripts\%%f
