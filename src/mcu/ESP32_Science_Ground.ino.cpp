@@ -10,8 +10,15 @@
 #include <math.h>
 #include <Arduino.h>
 #include <Wire.h>
+#include <time.h>
 
 WiFiClient client;
+
+const char* ntpServer = "pool.ntp.org";
+const long  gmtOffset_sec = 0;
+const int   daylightOffset_sec = 3600;
+
+String orario;
 
 enum stato {
   INIT,
@@ -21,6 +28,8 @@ enum stato {
   RECEIVED_MH_Z19B,
   WIFI_CONNECTING,
   WIFI_CONNECTED,
+  NTP_GET_TIME,
+  NTP_GOT_TIME,
   SERVER_CONNECTING,
   SERVER_CONNECTED,
   SENDING_GET_REQUEST,
@@ -94,46 +103,40 @@ void sendCmdToMhz19(char *);
 char getCheckSum(char *);
 
 void setup() {
-  // Note the format for setting a serial port is as follows: Serial2.begin(baud-rate, protocol, RX pin, TX pin);
-  Serial.begin(115200);
-  //Serial1.begin(9600, SERIAL_8N1, RXD2, TXD2);
-  Serial2.begin(9600, SERIAL_8N1, RXD2, TXD2);
-  //  Serial.println("Serial Txd is on pin: " + String(TX));
-  //  Serial.println("Serial Rxd is on pin: " + String(RX));
+  Serial.begin(115200);                         // Seriale standard per la comunicazione di debug
+  Serial2.begin(9600, SERIAL_8N1, RXD2, TXD2);  // Seriale 2 usata per connettersi al sensore MH-Z19B
 
-  Wire.begin();
-  shtBegin();
+  Wire.begin();                                 // Inizializzazione I2C usata per SHT20
+  shtBegin();                                   // Inizializzazione sensore SHT20
 
-
-  byte buf[BL] = CMD_ABC_OFF;
+  byte buf[BL] = CMD_ABC_OFF;                   // We are setting Automatic Baseline Correction to OFF
   sendCmdToMhz19(buf);
-  cmdSent = false;
+  cmdSent = false;                              // ready to process new commands on MH-Z19B (to be changed, absorbed by state machine)
 }
 
 void loop() { //Choose Serial1 or Serial2 as required
   switch (stato_macchina) {
-    case (INIT):
+    case (INIT):                                    // Initial status
       {
         Serial.println("STATUS: INIT");
       }
       stato_macchina = MEASURING_SHT_20;
       break;
 
-    case (MEASURING_SHT_20):
+    case (MEASURING_SHT_20):                    // Status used for collecting measurements from SHT20
       {
         Serial.println("--------------------------");
         Serial.println("STATUS: MEASURING_SHT_20");
         shtMeasure_all();
-        Serial.println((String)tempC + "°C");
-        Serial.println((String)dew_pointC + "°C dew point");
-        Serial.println((String)RH + " %RH");
-        Serial.println((String)vpd_kPa + " kPa VPD");
-        Serial.println();
+        Serial.println("Temperatura: " + (String)tempC + "°C");
+        Serial.println("Punto di rugiada: " + (String)dew_pointC + "°C dew point");
+        Serial.println("Umidita' relativa: " + (String)RH + " %");
+        Serial.println("deficit di pressione di vapore: " + (String)vpd_kPa + " kPa");
         stato_macchina = REQUEST_MH_Z19B;
       }
       break;
 
-    case (REQUEST_MH_Z19B):
+    case (REQUEST_MH_Z19B):                     // Status used for requesting measurements from MH-Z19B
       {
         Serial.println("STATUS: REQUEST_MH_Z19B");
         byte buf[BL] = CMD_READCO2;
@@ -143,7 +146,7 @@ void loop() { //Choose Serial1 or Serial2 as required
       }
       break;
 
-    case (RECEIVING_MH_Z19B):
+    case (RECEIVING_MH_Z19B):                   // Status used for waiting measurements from MH-Z19B
       {
         while ( cmdSent && Serial2.available() > 0 ) {
           resp[i] = int(Serial2.read());
@@ -158,24 +161,24 @@ void loop() { //Choose Serial1 or Serial2 as required
       }
       break;
 
-    case (RECEIVED_MH_Z19B):
+    case (RECEIVED_MH_Z19B):                    // Status used to print measurements from MH-Z19B
       {
         Serial.println("STATUS: RECEIVED_MH_Z19B");
-        Serial.print("concentrazione CO2: ");
+        Serial.print("Concentrazione CO2: ");
         Serial.println(resp[2] * 256 + resp[3]);
-//        Serial.print("Temp (fake): ");
-//        Serial.println((resp[4] - 32) * 5 / 9);
+        //        Serial.print("Temp (fake): ");
+        //        Serial.println((resp[4] - 32) * 5 / 9);
         stato_macchina = WIFI_CONNECTING;
       }
       break;
 
-    case (WIFI_CONNECTING):
+    case (WIFI_CONNECTING):                     // Status used to connect to a known Wi-Fi network
       {
         Serial.println("STATUS: WIFI_CONNECTING");
         WiFi.begin(ssid, password);
         int counter = 0;
-          Serial.print("Connecting to ");
-          Serial.print(ssid);
+        Serial.print("Connecting to ");
+        Serial.print(ssid);
         while (WiFi.status() != WL_CONNECTED) {
           delay(500);
           Serial.print(".");
@@ -185,17 +188,48 @@ void loop() { //Choose Serial1 or Serial2 as required
       }
       break;
 
-    case (WIFI_CONNECTED):
+    case (WIFI_CONNECTED):                     // Status used when connection has been established to a Wi-Fi network
       {
         Serial.println("STATUS: WIFI_CONNECTED");
         Serial.print("IP address: ");
         Serial.println(WiFi.localIP());
-        stato_macchina = SERVER_CONNECTING;
+        stato_macchina = NTP_GET_TIME;
+      }
+      break;
+
+    case (NTP_GET_TIME):                  // Status used to init NTP client
+      {
+        Serial.println("STATUS: NTP_GET_TIME");
+        configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+
+        stato_macchina = NTP_GOT_TIME;
+      }
+      break;
+
+
+    case (NTP_GOT_TIME):                  // Status used to get time from NTP server
+      {
+        Serial.println("STATUS: NTP_GOT_TIME");
+        // Init and get the time
+        struct tm timeinfo;
+        if (!getLocalTime(&timeinfo)) {
+          Serial.println("*** Failed to obtain time");
+          stato_macchina = NTP_GET_TIME;
+          return;
+        } else {
+          Serial.println("*** Got time");
+          char buf[15];
+          strftime(buf, 15, "%Y%m%d%H%M%S", &timeinfo);
+          orario = (String) buf;
+          Serial.println("Time:" + orario);
+          stato_macchina = SERVER_CONNECTING;
+        }
         stato_macchina = WIFI_DISCONNECT;
       }
       break;
 
-    case (SERVER_CONNECTING):
+
+    case (SERVER_CONNECTING):                  // Status used to start connecting to the server that collects measurements
       {
         Serial.println("STATUS: SERVER_CONNECTING");
         //connect(server);
@@ -204,7 +238,7 @@ void loop() { //Choose Serial1 or Serial2 as required
 
       break;
 
-    case (SERVER_CONNECTED):
+    case (SERVER_CONNECTED):                  // Status used when connection is done to the server that collects measurements
       {
         Serial.println("STATUS: SERVER_CONNECTED");
         stato_macchina = SENDING_GET_REQUEST;
@@ -212,7 +246,7 @@ void loop() { //Choose Serial1 or Serial2 as required
       }
       break;
 
-    case (SENDING_GET_REQUEST):
+    case (SENDING_GET_REQUEST):               // Status used to send data to the server that collects measurements
       {
         Serial.println("STATUS: SENDING_GET_REQUEST");
         //sendGetRequest(server, resource);
@@ -220,7 +254,7 @@ void loop() { //Choose Serial1 or Serial2 as required
       }
       break;
 
-    case (SENT_GET_REQUEST):
+    case (SENT_GET_REQUEST):               // Status used when completed sending data to the server that collects measurements
       {
         Serial.println("STATUS: SENT_GET_REQUEST");
         //stato_macchina = WAITING_RESPONSE;
@@ -228,7 +262,7 @@ void loop() { //Choose Serial1 or Serial2 as required
       }
       break;
 
-    case (WAITING_RESPONSE):
+    case (WAITING_RESPONSE):               // Status used when waiting for a response from the server that collects measurements
       {
         Serial.println("STATUS: WAITING_RESPONSE");
         //skipResponseHeaders();
@@ -236,7 +270,7 @@ void loop() { //Choose Serial1 or Serial2 as required
       }
       break;
 
-    case (RESPONSE_OK):
+    case (RESPONSE_OK):               // Status used when response received from the server that collects measurements is OK
       {
         Serial.println("STATUS: RESPONSE_OK");
         //Serial.println(response);
@@ -244,15 +278,15 @@ void loop() { //Choose Serial1 or Serial2 as required
       }
       break;
 
-    case (WIFI_DISCONNECT):
+    case (WIFI_DISCONNECT):                     // Status used when disconnecting from the Wi-Fi network
       {
         Serial.println("STATUS: WIFI_DISCONNECT");
         WiFi.disconnect();
         stato_macchina = STANDBY;
       }
       break;
-      
-    case (STANDBY):
+
+    case (STANDBY):                     // Status used when MCU goes to standby (actually this can be better, by using deep sleep and so on)
       {
         if (standby) {
           if (millis() - start > (1000 * NSEC) ) {
@@ -266,7 +300,7 @@ void loop() { //Choose Serial1 or Serial2 as required
       }
       break;
 
-    case (ERRORE):
+    case (ERRORE):                    // status used in case of error
       {
         Serial.println("STATUS: ERRORE");
         if (WiFi.status() == WL_CONNECTED) {
@@ -452,8 +486,6 @@ bool skipResponseHeaders() {
 
   client.setTimeout(HTTP_TIMEOUT);
   bool ok = client.find(endOfHeaders);
-
-
 
   if (ok) {
     client.readBytes(response, 800);
