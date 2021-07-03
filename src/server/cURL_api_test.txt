@@ -1,7 +1,7 @@
 
 ADD Measure
 
-curl --location --request GET '127.0.0.1:4000/data/measures/add' \
+curl --location --request GET '127.0.0.1:8080/data/measures/add' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "Data" : 
@@ -10,19 +10,19 @@ curl --location --request GET '127.0.0.1:4000/data/measures/add' \
             "TerrariumID": "Terrain_1",
             "SensorID": "Termo_1",
             "Value": "21.5",
-            "Timestamp": "10:10:00"
+            "Timestamp": "2010-12-30 12:10:04.100"
         },
         {
             "TerrariumID": "Terrain_1",
             "SensorID": "Termo_2",
             "Value": "22.5",
-            "Timestamp": "10:10:00"
+            "Timestamp": "2010-12-30 12:10:04.100"
         },
         {
             "TerrariumID": "Terrain_1",
             "SensorID": "Humidity_1",
             "Value": "75",
-            "Timestamp": "10:10:00"
+            "Timestamp": "2010-12-30 12:10:04.100"
         }
     ]
  }
@@ -39,3 +39,8 @@ curl --location --request GET '127.0.0.1:8080/data/measures/get' \
     "SensorID": "-"
  }
 '
+
+REQUEST Terrariums
+
+curl --location --request GET '127.0.0.1:8080/data/terrariums/get'
+
