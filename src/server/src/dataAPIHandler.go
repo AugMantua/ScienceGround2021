@@ -93,7 +93,12 @@ func AddMeasure(db *sql.DB) http.HandlerFunc {
 		/*Data insert into DB*/
 		for index := range p.Data {
 			t_data := p.Data[index]
-			insertMeasure(db, t_data)
+			if insertMeasureCheck(db, t_data) {
+				insertMeasure(db, t_data)
+			} else {
+				fmt.Fprintf(w, "\nTerrarium-sensor link error\n %+v - %+v", t_data.TerrariumID, t_data.SensorID)
+			}
+
 		}
 	}
 }
