@@ -152,9 +152,9 @@ export default {
       dateFrom: new Date().toISOString().substr(0, 10),
       menuDialogFrom: false,
 
-      timeTo: "00:00",
+      timeTo: "23:59",
       menuTimeTo: false,
-      timeFrom: "00:00",
+      timeFrom: "00:01",
       menuTimeFrom: false,
     };
   },
@@ -177,14 +177,16 @@ export default {
     }
   },
   mounted() {
+    setTimeout ( () =>{
     this.changeFilter();
+    }, 5000);
     this.dateFrom = moment(this.dateFrom, "YYYY-MM-DD").subtract(3, 'months').format("YYYY-MM-DD");
   },
   methods: {
     changeFilter() {
       EventBus.$emit("updateChart", {
-          to: moment(this.dateTo + " " + this.timeTo, "YYYY-MM-DD HH:mm").format("YYYYMMDDHHmm"),
-          from: moment(this.dateFrom + " " + this.timeFrom, "YYYY-MM-DD HH:mm").format("YYYYMMDDHHmm"),
+          to: moment(this.dateTo + " " + this.timeTo, "YYYY-MM-DD HH:mm").format("YYYY-MM-DD HH:mm"),
+          from: moment(this.dateFrom + " " + this.timeFrom, "YYYY-MM-DD HH:mm").format("YYYY-MM-DD HH:mm"),
         });
     }
   }

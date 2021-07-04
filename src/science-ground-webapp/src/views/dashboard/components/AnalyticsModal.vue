@@ -30,7 +30,7 @@
               </v-tabs>
 
               <v-tabs-items v-model="tabs">
-                <v-tab-item v-for="item in terrariumSensors" :key="item.SensorID">
+                <v-tab-item v-for="item in terrariumSensors" :key="item.SensorID" :eager="true">
                   <sensorchart v-bind:terrariumId="terrariumId" v-bind:sensorDatas="item"/>
                 </v-tab-item>
               </v-tabs-items>

@@ -1,6 +1,11 @@
 <template>
-  <v-card elevation="0" outlined>
-    <apexchart type="line" :options="options" :series="series"></apexchart>
+  <v-card elevation="0" outlined :loading="loading">
+    <apexchart
+      type="line"
+      :options="options"
+      :series="series"
+      ref="chart"
+    ></apexchart>
   </v-card>
 </template>
 
@@ -17,6 +22,7 @@ export default {
   props: ["sensorDatas", "terrariumId", "dateTimeFilters"],
   data() {
     return {
+      loading: true,
       options: {
         chart: {
           id: "vuechart-example",
@@ -24,6 +30,11 @@ export default {
         xaxis: {
           labels: {
             show: false,
+          },
+        },
+        yaxis: {
+          title: {
+            text: "Price",
           },
         },
       },
@@ -47,7 +58,7 @@ export default {
   methods: {
     getTerrariunDatas(from, to) {
       let self = this;
-
+      self.loading = true;
       let data = {
         TerrariumId: self.terrariumId,
         From: from,
@@ -69,12 +80,16 @@ export default {
             });
           });
 
-          self.series = [{
-            data: temp
-          }]
+          self.series = [
+            {
+              data: temp,
+            },
+          ];
+
+          self.loading = false;
         })
         .catch((err) => {
-          console.log(err);
+           self.loading = false;
         });
     },
   },
