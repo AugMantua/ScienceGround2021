@@ -183,15 +183,7 @@ void loop() { //Choose Serial1 or Serial2 as required
     case (WIFI_CONNECTING):                     // Status used to connect to a known Wi-Fi network
       {
         Serial.println("STATUS: WIFI_CONNECTING");
-        WiFi.begin(ssid, password);
-        int counter = 0;
-        Serial.print("Connecting to ");
-        Serial.print(ssid);
-        while (WiFi.status() != WL_CONNECTED) {
-          delay(500);
-          Serial.print(".");
-        }
-        Serial.println("");
+        connectToWifi();
         stato_macchina = WIFI_CONNECTED;
       }
       break;
@@ -299,6 +291,7 @@ void loop() { //Choose Serial1 or Serial2 as required
             Serial.println("http response Code: " + (String)httpCode);
             Serial.println("Payload: " + (String)payload);
             stato_macchina = WAITING_RESPONSE;
+            stato_macchina = WIFI_DISCONNECT;
           }
           else {
             Serial.println("Error on HTTP request");
@@ -316,7 +309,6 @@ void loop() { //Choose Serial1 or Serial2 as required
     case (WAITING_RESPONSE):               // Status used when waiting for a response from the server that collects measurements
       {
         Serial.println("STATUS: WAITING_RESPONSE");
-        //skipResponseHeaders();
         stato_macchina = RESPONSE_OK;
 
       }
@@ -364,6 +356,8 @@ void loop() { //Choose Serial1 or Serial2 as required
           stato_macchina = STANDBY;
         } else {
           Serial.println("Not connected to WiFi");
+          connectToWifi();
+          stato_macchina = STANDBY;
         }
       }
       break;
@@ -503,22 +497,15 @@ void shtMeasure_all()
   shtDew_point();
 }
 
+void connectToWifi() {
 
-bool skipResponseHeaders() {
-  stato_macchina = WAITING_RESPONSE;
-
-  //HTTP headers end with an empty line
-  char endOfHeaders[] = "\r\n\r\n";
-
-  client.setTimeout(HTTP_TIMEOUT);
-  bool ok = client.find(endOfHeaders);
-
-  if (ok) {
-    client.readBytes(response, 800);
-    stato_macchina = RESPONSE_OK;
-  } else {
-    Serial.println("No response or invalid response!");
-    stato_macchina = ERRORE;
+  WiFi.begin(ssid, password);
+  int counter = 0;
+  Serial.print("Connecting to ");
+  Serial.print(ssid);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
   }
-  return ok;
+  Serial.println("");
 }
