@@ -46,6 +46,7 @@ const unsigned long HTTP_TIMEOUT = 10000;  // max response time from server
 char response[800]; // this fixed sized buffers works well for this project using the NodeMCU.
 
 int stato_macchina = INIT;
+int stato_precedente = INIT;
 const char* ssid     = "JamiroOspite";
 const char* password = "ciaociao";
 
@@ -215,7 +216,9 @@ void loop() { //Choose Serial1 or Serial2 as required
           Serial.println("*** Failed to obtain time");
           cntNpt++;
           if (cntNpt > MAX_NPT) {
+            stato_precedente = stato_macchina;
             stato_macchina = ERRORE;
+
           } else {
             stato_macchina = NTP_GET_TIME;
           }
@@ -296,11 +299,13 @@ void loop() { //Choose Serial1 or Serial2 as required
           else {
             Serial.println("Error on HTTP request");
             Serial.println(httpCode);
-            stato_macchina = ERRORE;
+                        stato_precedente = stato_macchina;
+stato_macchina = ERRORE;
           }
         } else {
           Serial.println("Lost connection");
-          stato_macchina = ERRORE;
+                      stato_precedente = stato_macchina;
+stato_macchina = ERRORE;
         }
       }
       break;
@@ -357,7 +362,11 @@ void loop() { //Choose Serial1 or Serial2 as required
         } else {
           Serial.println("Not connected to WiFi");
           connectToWifi();
-          stato_macchina = STANDBY;
+          if (WiFi.status() == WL_CONNECTED) {
+            stato_macchina = stato_precedente;
+          }else{
+            stato_macchina = STANDBY;
+          }
         }
       }
       break;
