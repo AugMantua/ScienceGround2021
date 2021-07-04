@@ -106,7 +106,7 @@ byte resp[BL];
 char getCheckSum(char *);
 bool cmdSent = false;
 long start = millis();
-bool standby = false;
+bool first = true;
 
 void sendCmdToMhz19(char *);
 char getCheckSum(char *);
@@ -226,10 +226,10 @@ void loop() { //Choose Serial1 or Serial2 as required
         } else {
           Serial.println("*** Got time");
           cntNpt = 0;
-          char buf[15];
-          strftime(buf, 15, "%Y%m%d%H%M%S", &timeinfo);
+          char buf[24];
+          strftime(buf, 24, "%Y-%m-%d %H:%M:%S.000", &timeinfo);
           orario = (String) buf;
-          Serial.println("Time:" + orario);
+          Serial.println("Time: " + orario);
           stato_macchina = PREPARE_DATA;
         }
       }
@@ -295,17 +295,16 @@ void loop() { //Choose Serial1 or Serial2 as required
             Serial.println("Payload: " + (String)payload);
             stato_macchina = WAITING_RESPONSE;
             stato_macchina = WIFI_DISCONNECT;
-          }
-          else {
+          } else {
             Serial.println("Error on HTTP request");
             Serial.println(httpCode);
-                        stato_precedente = stato_macchina;
-stato_macchina = ERRORE;
+            stato_precedente = stato_macchina;
+            stato_macchina = ERRORE;
           }
         } else {
           Serial.println("Lost connection");
-                      stato_precedente = stato_macchina;
-stato_macchina = ERRORE;
+          stato_precedente = stato_macchina;
+          stato_macchina = ERRORE;
         }
       }
       break;
@@ -342,14 +341,13 @@ stato_macchina = ERRORE;
 
     case (STANDBY):                     // Status used when MCU goes to standby (actually this can be better, by using deep sleep and so on)
       {
-        if (standby) {
-          if (millis() - start > (1000 * NSEC) ) {
-            standby = false;
-            stato_macchina = MEASURING_SHT_20;
-          }
-        } else {
+        if (first) {
           Serial.println("STATUS: STANDBY");
-          standby = true;
+          first = false;
+        }
+        if (millis() - start > (1000 * NSEC) ) {
+          stato_macchina = MEASURING_SHT_20;
+          first = true;
         }
       }
       break;
@@ -360,11 +358,13 @@ stato_macchina = ERRORE;
         if (WiFi.status() == WL_CONNECTED) {
           stato_macchina = STANDBY;
         } else {
-          Serial.println("Not connected to WiFi");
+          Serial.println("Not connected to WiFi... Trying to reconnect");
           connectToWifi();
           if (WiFi.status() == WL_CONNECTED) {
+            Serial.println("Reconnected to WiFi... Returning to previous state to complete operations");
             stato_macchina = stato_precedente;
-          }else{
+          } else {
+            Serial.println("Could not reconnect to WiFi... Going to STANDBY");
             stato_macchina = STANDBY;
           }
         }
