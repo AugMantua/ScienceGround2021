@@ -16,10 +16,7 @@
       </v-toolbar>
 
       <v-row no-gutters>
-        <!-- GRAFICI -->
-        <v-col cols="2" v-if="!$vuetify.breakpoint.smAndDown">
-          <timefilsers />
-        </v-col>
+      
         <!-- GRAFICI -->
         <v-col :cols="!$vuetify.breakpoint.smAndDown ? '10' : '12'">
           <v-card elevation="2" class="mt-3 ml-4 mr-4">
@@ -36,7 +33,10 @@
               </v-tabs-items>
 
             </v-container>
-          </v-card>
+          </v-card >
+        </v-col>  <!-- GRAFICI -->
+        <v-col :cols="!$vuetify.breakpoint.smAndDown ? '2' : '12'">
+          <timefilsers />
         </v-col>
       </v-row>
     </v-card>
@@ -80,3 +80,4 @@ export default {
   methods: {},
 };
 </script>
+

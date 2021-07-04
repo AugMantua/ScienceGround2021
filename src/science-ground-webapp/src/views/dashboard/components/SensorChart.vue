@@ -34,7 +34,7 @@ export default {
         },
         yaxis: {
           title: {
-            text: "Price",
+            text: "",
           },
         },
       },
