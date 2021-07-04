@@ -245,33 +245,34 @@ void loop() { //Choose Serial1 or Serial2 as required
         JsonObject Data_Temp = Data.createNestedObject();
         Data_Temp["TerrariumID"] = "Terrain_1";
         Data_Temp["SensorID"] = "Temp";
-        Data_Temp["Value"] = (String)tempC;
-        Data_Temp["Timestamp"] = (String)orario;
+        Data_Temp["Value"] = (String)tempC ;
+        Data_Temp["Timestamp"] =  (String)orario ;
 
         JsonObject Data_Rugiada = Data.createNestedObject();
         Data_Rugiada["TerrariumID"] = "Terrain_1";
         Data_Rugiada["SensorID"] = "PuntoRugiada";
-        Data_Rugiada["Value"] = (String)dew_pointC;
-        Data_Rugiada["Timestamp"] = (String)orario;
+        Data_Rugiada["Value"] =  (String)dew_pointC ;
+        Data_Rugiada["Timestamp"] =  (String)orario ;
 
         JsonObject Data_Umid = Data.createNestedObject();
         Data_Umid["TerrariumID"] = "Terrain_1";
         Data_Umid["SensorID"] = "Umid";
-        Data_Umid["Value"] = (String)RH;
-        Data_Umid["Timestamp"] = (String)orario;
+        Data_Umid["Value"] =  (String)RH ;
+        Data_Umid["Timestamp"] =  (String)orario ;
 
         JsonObject Data_VPD = Data.createNestedObject();
         Data_VPD["TerrariumID"] = "Terrain_1";
         Data_VPD["SensorID"] = "VPD";
-        Data_VPD["Value"] = (String)vpd_kPa;
-        Data_VPD["Timestamp"] = (String)orario;
+        Data_VPD["Value"] =  (String)vpd_kPa ;
+        Data_VPD["Timestamp"] =  (String)orario ;
 
         JsonObject Data_CO2 = Data.createNestedObject();
         Data_CO2["TerrariumID"] = "Terrain_1";
         Data_CO2["SensorID"] = "CO2";
-        Data_CO2["Value"] = (String)CO2;
-        Data_CO2["Timestamp"] = (String)orario;
+        Data_CO2["Value"] =  (String)CO2 ;
+        Data_CO2["Timestamp"] =  (String)orario ;
 
+        postMessage="";
         serializeJson(doc, postMessage);
         serializeJson(doc, Serial);
         Serial.println();
@@ -301,6 +302,7 @@ void loop() { //Choose Serial1 or Serial2 as required
             stato_precedente = stato_macchina;
             stato_macchina = ERRORE;
           }
+          http.end();
         } else {
           Serial.println("Lost connection");
           stato_precedente = stato_macchina;
