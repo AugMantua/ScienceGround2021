@@ -4,7 +4,7 @@
       type="line"
       :options="options"
       :series="series"
-      ref="chart"
+      ref="sensorChart"
     ></apexchart>
   </v-card>
 </template>
@@ -73,7 +73,7 @@ export default {
 
           let temp = [];
 
-          if(res.data == null){
+          if (res.data == null) {
             self.series = [
               {
                 data: [],
@@ -93,13 +93,27 @@ export default {
           self.series = [
             {
               data: temp,
+              name:
+                self.sensorDatas.TypeOfMeasure +
+                " (" +
+                self.sensorDatas.Extra_data +
+                ")",
             },
           ];
-
+          self.$refs.sensorChart.updateOptions({
+            yaxis: {
+              title: {
+                text: self.sensorDatas.TypeOfMeasure +
+                " (" +
+                self.sensorDatas.Extra_data +
+                ")",
+              },
+            },
+          });
           self.loading = false;
         })
         .catch((err) => {
-           self.loading = false;
+          self.loading = false;
         });
     },
   },
