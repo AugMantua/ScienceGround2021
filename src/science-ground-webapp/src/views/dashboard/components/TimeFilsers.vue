@@ -28,6 +28,7 @@
               text
               color="primary"
               @click="$refs.dialogDateFrom.save(dateFrom)"
+              :disabled="validDateInsert"
             >
               OK
             </v-btn>
@@ -60,6 +61,7 @@
               text
               color="primary"
               @click="$refs.dialogTimeFrom.save(timeFrom)"
+              :disabled="validDateInsert"
             >
               OK
             </v-btn>
@@ -95,6 +97,7 @@
               text
               color="primary"
               @click="$refs.dialogDateTo.save(dateTo)"
+               :disabled="validDateInsert"
             >
               OK
             </v-btn>
@@ -127,6 +130,7 @@
               text
               color="primary"
               @click="$refs.dialogTimeTo.save(timeTo)"
+              :disabled="validDateInsert"
             >
               OK
             </v-btn>
@@ -158,21 +162,27 @@ export default {
       menuTimeFrom: false,
     };
   },
+  computed:{
+    validDateInsert(){
+      return moment(this.dateFrom + ' ' + this.timeFrom, 'YYYY-MM-DD HH:mm') > moment(this.dateTo + ' ' + this.timeTo, 'YYYY-MM-DD HH:mm');
+    },
+
+  },
   watch:{
     menuDateTo(){
-      if(!this.menuDateTo)
+      if(!this.menuDateTo && !this.validDateInsert)
         this.changeFilter();
     },
     menuDialogFrom(){
-      if(!this.menuDialogFrom)
+      if(!this.menuDialogFrom && !this.validDateInsert)
         this.changeFilter();
     },
     menuTimeTo(){
-      if(!this.menuTimeTo)
+      if(!this.menuTimeTo && !this.validDateInsert)
        this.changeFilter();
     },
     menuTimeFrom(){
-       if(!this.menuTimeFrom)
+       if(!this.menuTimeFrom && !this.validDateInsert)
          this.changeFilter();
     }
   },

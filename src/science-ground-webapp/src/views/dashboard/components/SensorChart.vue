@@ -73,6 +73,16 @@ export default {
 
           let temp = [];
 
+          if(res.data == null){
+            self.series = [
+              {
+                data: [],
+              },
+            ];
+            self.loading = false;
+            return;
+          }
+
           res.data.forEach((element) => {
             temp.push({
               x: element.Timestamp,
