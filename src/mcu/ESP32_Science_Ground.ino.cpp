@@ -53,7 +53,9 @@ const char* password = "ciaociao";
 #define RXD2 16
 #define TXD2 17
 #define BL 9
-#define NSEC 60
+#define NSEC 0
+#define NMIN 20
+#define NORE 0
 
 // Set of commands for MH-Z19B
 // last byte is checksum, calculated as negation of the sum of all bytes except FF
@@ -347,7 +349,7 @@ void loop() { //Choose Serial1 or Serial2 as required
           Serial.println("STATUS: STANDBY");
           first = false;
         }
-        if (millis() - start > (1000 * NSEC) ) {
+        if (millis() - start > (1000 * (NSEC + 60* NMIN + 3600 * NORE)) ) {
           stato_macchina = MEASURING_SHT_20;
           first = true;
         }
