@@ -27,6 +27,7 @@ type terrariumData struct {
 	TypeOfTerrarium string
 	TerrariumAlias  string
 	SensorsIds      []sensorData
+	Status          string
 }
 
 type terrariumsSensors struct {
@@ -34,11 +35,17 @@ type terrariumsSensors struct {
 	SensorID    string
 }
 
+type terrariumsSession struct {
+	TerrariumID string
+	SessionKey    string
+}
+
 type single_measure_data struct {
 	TerrariumID string
 	SensorID    string
 	Value       string
 	Timestamp   string
+	SessionKey  string
 }
 
 type measures_data struct {
@@ -84,7 +91,8 @@ func CreateDBTables(db *sql.DB) {
 		"terrariumID" TEXT,
 		"sensorID" TEXT,
 		"value" TEXT,
-		"timestamp" TEXT
+		"timestamp" TEXT,
+		"SessionKey" TEXT
 	);`
 	log.Println("Create measures table...")
 	statement, err := db.Prepare(createMeasureTable) // Prepare SQL Statement
@@ -111,6 +119,7 @@ func CreateDBTables(db *sql.DB) {
 		"terrariumID"	TEXT NOT NULL,
 		"typeOfTerrarium"	TEXT,
 		"terrariumAlias"	TEXT,
+		Status INTEGER NOT NULL DEFAULT '0',
 		PRIMARY KEY("terrariumID")
 	);`
 	log.Println("Create Terrariums table...")
@@ -120,6 +129,7 @@ func CreateDBTables(db *sql.DB) {
 	}
 	statement.Exec() // Execute SQL Statements
 	log.Println("Terrariums table created")
+
 	createTerrariumsSensor := `
 	CREATE TABLE "terrariumsSensors" (
 		"terrariumID"	TEXT NOT NULL,
@@ -133,6 +143,20 @@ func CreateDBTables(db *sql.DB) {
 	}
 	statement.Exec() // Execute SQL Statements
 	log.Println("Terrariums-Sensors table created")
+
+	createTerrariumsLiveSession := `
+	CREATE TABLE "terrariumsLiveSession" (
+		"terrariumID"	TEXT NOT NULL,
+		"SessionKey"	TEXT NOT NULL,
+		PRIMARY KEY("SessionKey","terrariumID")
+	);`
+	log.Println("Create Terrariums-Serrion table...")
+	statement, err = db.Prepare(createTerrariumsLiveSession) // Prepare SQL Statement
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	statement.Exec() // Execute SQL Statements
+	log.Println("Terrariums-Serrion table created")
 }
 
 func insertMeasureCheck(db *sql.DB, measure single_measure_data) bool {
