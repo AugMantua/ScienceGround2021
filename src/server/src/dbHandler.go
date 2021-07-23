@@ -135,6 +135,28 @@ func CreateDBTables(db *sql.DB) {
 	log.Println("Terrariums-Sensors table created")
 }
 
+func insertMeasureCheck(db *sql.DB, measure single_measure_data) bool {
+	log.Println("Checking data consistency")
+	sql_check_terrarium_existance := `SELECT terrariumID from terrariumsSensors
+									  WHERE terrariumID = ?
+									  AND sensorID = ?`
+	statement, err := db.Prepare(sql_check_terrarium_existance) // Prepare statement.
+	// This is good to avoid SQL injections
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
+	var t_id string
+	err = statement.QueryRow(measure.TerrariumID, measure.SensorID).Scan(&t_id)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			log.Fatalln(err.Error())
+		} else {
+			return false
+		}
+	}
+	return true
+}
+
 func insertMeasure(db *sql.DB, measure single_measure_data) {
 	log.Println("Inserting measure record")
 	insertMeasureSQL := `INSERT INTO measures(terrariumID, sensorID, value, timestamp) VALUES (?,?, ?, ?)`
