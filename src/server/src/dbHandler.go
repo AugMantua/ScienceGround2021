@@ -38,6 +38,8 @@ type terrariumsSensors struct {
 type terrariumsSession struct {
 	TerrariumID string
 	SessionKey    string
+	TimestampStart   string
+	TimestampEnd   string
 }
 
 type single_measure_data struct {
@@ -148,6 +150,8 @@ func CreateDBTables(db *sql.DB) {
 	CREATE TABLE "terrariumsLiveSession" (
 		"terrariumID"	TEXT NOT NULL,
 		"SessionKey"	TEXT NOT NULL,
+		"timestampStart" TEXT NOT NULL,
+		"timestampEnd" TEXT NOT NULL,
 		PRIMARY KEY("SessionKey","terrariumID")
 	);`
 	log.Println("Create Terrariums-Serrion table...")
@@ -236,6 +240,36 @@ func getMeasures(db *sql.DB, request measures_request_typ) []single_measure_data
 		measures = append(measures, measure)
 	}
 	return measures
+}
+
+func createSessionRow(db *sql.DB, SessionKey, terrariumID, timestampStart){
+	log.Println("Inserting session record")
+	createSessionSQL := `INSERT INTO terrariumsLiveSession(terrariumID, SessionKey, timestampStart) VALUES (?,?, ?)`
+	statement, err := db.Prepare(createSessionSQL) // Prepare statement.
+	// This is good to avoid SQL injections
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
+	_, err = statement.Exec(terrariumID, SessionKey, timestampStart)
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
+
+	return SessionKey;
+}
+
+func stopSession(db *sql.DB, SessionKey, terrariumID, timestampEnd){
+	log.Println("Inserting session record")
+	endSessionSQL := `UPDATE terrariumsLiveSession timestampEnd	= ? WHERE SessionKey = ? AND terrariumID = ? `
+	statement, err := db.Prepare(endSessionSQL) // Prepare statement.
+	// This is good to avoid SQL injections
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
+	_, err = statement.Exec(timestampEnd, SessionKey, terrariumID)
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
 }
 
 func getTerrariums(db *sql.DB) []terrariumData {

@@ -9,7 +9,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
-
+	"crypto/rand"
 	"github.com/golang/gddo/httputil/header"
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -103,6 +103,65 @@ func AddMeasure(db *sql.DB) http.HandlerFunc {
 	}
 }
 
+func StartSession(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Content-Type") != "" {
+			value, _ := header.ParseValueAndParams(r.Header, "Content-Type")
+			if value != "application/json" {
+				msg := "Content-Type header is not application/json"
+				http.Error(w, msg, http.StatusUnsupportedMediaType)
+				return
+			}
+		}
+		var request measures_request_typ
+		/*Decode json content*/
+		jsonDecodeToStruct(&request, w, r)
+
+		t := time.Now()
+		timestamp = fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
+		newSK = randString(32)
+
+		/*Extract data and send back*/
+		measures := createSessionRow(db, newSK , request.TerrariumID, timestamp)
+		/*Encode to json*/
+		message, err := json.Marshal(measures)
+		if err != nil {
+			http.Error(w, "", http.StatusInternalServerError)
+			log.Fatal(err.Error())
+		}
+		w.Write(message)
+	}
+}
+
+func StartSession(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Content-Type") != "" {
+			value, _ := header.ParseValueAndParams(r.Header, "Content-Type")
+			if value != "application/json" {
+				msg := "Content-Type header is not application/json"
+				http.Error(w, msg, http.StatusUnsupportedMediaType)
+				return
+			}
+		}
+		var request measures_request_typ
+		/*Decode json content*/
+		jsonDecodeToStruct(&request, w, r)
+
+		t := time.Now()
+		timestamp = fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
+
+		/*Extract data and send back*/
+		measures := stopSession(db, request.SessionKey , request.TerrariumID, timestamp)
+		/*Encode to json*/
+		message, err := json.Marshal(measures)
+		if err != nil {
+			http.Error(w, "", http.StatusInternalServerError)
+			log.Fatal(err.Error())
+		}
+		w.Write(message)
+	}
+}
+
 func RequestMeasures(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Content-Type") != "" {
@@ -139,5 +198,18 @@ func RequestTerrariumsList(db *sql.DB) http.HandlerFunc {
 			log.Fatal(err.Error())
 		}
 		w.Write(message)
+	}
+
+
+	// UTILITY 
+
+	func randString(n int) string {
+		const alphanum = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+		var bytes = make([]byte, n)
+		rand.Read(bytes)
+		for i, b := range bytes {
+			bytes[i] = alphanum[b % byte(len(alphanum))]
+		}
+		return string(bytes)
 	}
 }
