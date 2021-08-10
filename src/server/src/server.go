@@ -20,8 +20,8 @@ func main() {
 	mux.HandleFunc("/data/measures/get", RequestMeasures(SqliteDB))
 	mux.HandleFunc("/data/terrariums/get", RequestTerrariumsList(SqliteDB))
 
-	mux.HandleFunc("/data/session/start", RequestTerrariumsList(SqliteDB))
-	mux.HandleFunc("/data/session/stop", RequestTerrariumsList(SqliteDB))
+	mux.HandleFunc("/data/session/start", StartSession(SqliteDB))
+	mux.HandleFunc("/data/session/stop", StopSession(SqliteDB))
 
 	fmt.Println("Serving on port 8080")
 	err := http.ListenAndServe(":8080", cors.AllowAll().Handler(mux))

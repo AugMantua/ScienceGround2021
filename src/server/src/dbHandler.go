@@ -242,7 +242,7 @@ func getMeasures(db *sql.DB, request measures_request_typ) []single_measure_data
 	return measures
 }
 
-func createSessionRow(db *sql.DB, SessionKey, terrariumID, timestampStart){
+func createSessionRow(db *sql.DB, SessionKey string, terrariumID string, timestampStart string) string{
 	log.Println("Inserting session record")
 	createSessionSQL := `INSERT INTO terrariumsLiveSession(terrariumID, SessionKey, timestampStart) VALUES (?,?, ?)`
 	statement, err := db.Prepare(createSessionSQL) // Prepare statement.
@@ -253,12 +253,12 @@ func createSessionRow(db *sql.DB, SessionKey, terrariumID, timestampStart){
 	_, err = statement.Exec(terrariumID, SessionKey, timestampStart)
 	if err != nil {
 		log.Fatalln(err.Error())
+		return "err"
 	}
-
 	return SessionKey;
 }
 
-func stopSession(db *sql.DB, SessionKey, terrariumID, timestampEnd){
+func stopSession(db *sql.DB, SessionKey string, terrariumID string, timestampEnd string) bool{
 	log.Println("Inserting session record")
 	endSessionSQL := `UPDATE terrariumsLiveSession timestampEnd	= ? WHERE SessionKey = ? AND terrariumID = ? `
 	statement, err := db.Prepare(endSessionSQL) // Prepare statement.
@@ -269,7 +269,9 @@ func stopSession(db *sql.DB, SessionKey, terrariumID, timestampEnd){
 	_, err = statement.Exec(timestampEnd, SessionKey, terrariumID)
 	if err != nil {
 		log.Fatalln(err.Error())
+		return false;
 	}
+	return true;
 }
 
 func getTerrariums(db *sql.DB) []terrariumData {
