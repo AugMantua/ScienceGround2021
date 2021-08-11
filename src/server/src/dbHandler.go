@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-const _DB_NAME = "sqlite-scienceground.db"
+var _DB_NAME = os.Getenv("SQLITE_DB_PATH")
 
 var _DB_TABLES = []string{
 	"measures",
@@ -36,9 +36,9 @@ type terrariumsSensors struct {
 }
 
 type terrariumsSession struct {
-	TerrariumID string
-	SessionKey    string
-	TimestampStart   string
+	TerrariumID    string
+	SessionKey     string
+	TimestampStart string
 	TimestampEnd   string
 }
 
@@ -204,10 +204,12 @@ func insertMeasure(db *sql.DB, measure single_measure_data) {
  *Check Table presence or create them
  */
 func dataDBinit(dbPath string) *sql.DB {
+	log.Println("Searching for database in : " + dbPath)
 	if !CheckDBFile(dbPath) {
+		log.Println("Missing database, creating a new one")
 		InitNewDBFile()
 	}
-	sqliteDatabase, _ := sql.Open("sqlite3", "./"+dbPath) //Open sqliteDB
+	sqliteDatabase, _ := sql.Open("sqlite3", dbPath) //Open sqliteDB
 	//Check db tables existence
 	if !CheckDBTables(sqliteDatabase, _DB_TABLES) {
 		CreateDBTables(sqliteDatabase)
@@ -242,7 +244,7 @@ func getMeasures(db *sql.DB, request measures_request_typ) []single_measure_data
 	return measures
 }
 
-func createSessionRow(db *sql.DB, SessionKey string, terrariumID string, timestampStart string) string{
+func createSessionRow(db *sql.DB, SessionKey string, terrariumID string, timestampStart string) string {
 	log.Println("Inserting session record")
 	createSessionSQL := `INSERT INTO terrariumsLiveSession(terrariumID, SessionKey, timestampStart) VALUES (?,?, ?)`
 	statement, err := db.Prepare(createSessionSQL) // Prepare statement.
@@ -255,10 +257,10 @@ func createSessionRow(db *sql.DB, SessionKey string, terrariumID string, timesta
 		log.Fatalln(err.Error())
 		return "err"
 	}
-	return SessionKey;
+	return SessionKey
 }
 
-func stopSession(db *sql.DB, SessionKey string, terrariumID string, timestampEnd string) bool{
+func stopSession(db *sql.DB, SessionKey string, terrariumID string, timestampEnd string) bool {
 	log.Println("Inserting session record")
 	endSessionSQL := `UPDATE terrariumsLiveSession timestampEnd	= ? WHERE SessionKey = ? AND terrariumID = ? `
 	statement, err := db.Prepare(endSessionSQL) // Prepare statement.
@@ -269,9 +271,9 @@ func stopSession(db *sql.DB, SessionKey string, terrariumID string, timestampEnd
 	_, err = statement.Exec(timestampEnd, SessionKey, terrariumID)
 	if err != nil {
 		log.Fatalln(err.Error())
-		return false;
+		return false
 	}
-	return true;
+	return true
 }
 
 func getTerrariums(db *sql.DB) []terrariumData {

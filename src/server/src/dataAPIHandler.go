@@ -1,16 +1,17 @@
 package main
 
 import (
+	"crypto/rand"
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"time"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"strings"
-	"crypto/rand"
+	"time"
+
 	"github.com/golang/gddo/httputil/header"
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -104,6 +105,19 @@ func AddMeasure(db *sql.DB) http.HandlerFunc {
 	}
 }
 
+func Status() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		message := struct{ Status string }{Status: "OK"}
+		res, err := json.Marshal(message)
+		if err != nil {
+			http.Error(w, "", http.StatusInternalServerError)
+			log.Fatal(err.Error())
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write(res)
+	}
+}
+
 func StartSession(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Content-Type") != "" {
@@ -114,24 +128,24 @@ func StartSession(db *sql.DB) http.HandlerFunc {
 				return
 			}
 		}
-		var request terrariumsSession 
+		var request terrariumsSession
 		/*Decode json content*/
 		jsonDecodeToStruct(&request, w, r)
 
 		var t = time.Now()
 		var timestamp = fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
-		
+
 		const alphanum = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 		var bytes = make([]byte, 32)
 		rand.Read(bytes)
 		for i, b := range bytes {
-			bytes[i] = alphanum[b % byte(len(alphanum))]
+			bytes[i] = alphanum[b%byte(len(alphanum))]
 		}
-		
+
 		var newSK = string(bytes)
 
 		/*Extract data and send back*/
-		var ris = createSessionRow(db, newSK , request.TerrariumID, timestamp)
+		var ris = createSessionRow(db, newSK, request.TerrariumID, timestamp)
 		/*Encode to json*/
 		message, err := json.Marshal(ris)
 		if err != nil {
@@ -152,7 +166,7 @@ func StopSession(db *sql.DB) http.HandlerFunc {
 				return
 			}
 		}
-		var request terrariumsSession 
+		var request terrariumsSession
 		/*Decode json content*/
 		jsonDecodeToStruct(&request, w, r)
 
@@ -160,7 +174,7 @@ func StopSession(db *sql.DB) http.HandlerFunc {
 		var timestamp = fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
 
 		/*Extract data and send back*/
-		var ris = stopSession(db, request.SessionKey , request.TerrariumID, timestamp)
+		var ris = stopSession(db, request.SessionKey, request.TerrariumID, timestamp)
 		/*Encode to json*/
 		message, err := json.Marshal(ris)
 		if err != nil {
