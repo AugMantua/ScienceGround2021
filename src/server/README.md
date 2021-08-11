@@ -6,3 +6,5 @@ This volume contains the sqlite db, this way db can be shared between istances a
 
 Docker uses an alpine-go image in order to build the app and then deploys it to another conatiner based on alpine <10MB image.
 This way the image is less than 20MB.
+
+In order to build : docker build --tag science-ground-server .
