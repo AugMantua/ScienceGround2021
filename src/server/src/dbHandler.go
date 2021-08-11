@@ -122,7 +122,7 @@ func CreateDBTables(db *sql.DB) {
 		"terrariumID"	TEXT NOT NULL,
 		"typeOfTerrarium"	TEXT,
 		"terrariumAlias"	TEXT,
-		Status INTEGER NOT NULL DEFAULT 0,
+		"status" INTEGER NOT NULL DEFAULT 0,
 		PRIMARY KEY("terrariumID")
 	);`
 	log.Println("Create Terrariums table...")
