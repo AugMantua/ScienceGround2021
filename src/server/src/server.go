@@ -19,17 +19,17 @@ func main() {
 		log.Fatalf("Error loading .env file")
 	}
 
-	SqliteDB := dataDBinit(os.Getenv("SQLITE_DB_PATH"))
+	MongoDB, context := dataDBinit(os.Getenv("MONGODB"))
 	//Closes db at the end of main
-	defer SqliteDB.Close()
+	defer MongoDB.Client().Disconnect(context)
 	//
 	mux := http.NewServeMux()
-	mux.HandleFunc("/data/measures/add", AddMeasure(SqliteDB))
-	mux.HandleFunc("/data/measures/get", RequestMeasures(SqliteDB))
-	mux.HandleFunc("/data/terrariums/get", RequestTerrariumsList(SqliteDB))
+	mux.HandleFunc("/data/measures/add", AddMeasure(MongoDB))
+	mux.HandleFunc("/data/measures/get", RequestMeasures(MongoDB, context))
+	mux.HandleFunc("/data/terrariums/get", RequestTerrariumsList(MongoDB))
 
-	mux.HandleFunc("/data/session/start", StartSession(SqliteDB))
-	mux.HandleFunc("/data/session/stop", StopSession(SqliteDB))
+	mux.HandleFunc("/data/session/start", StartSession(MongoDB))
+	mux.HandleFunc("/data/session/stop", StopSession(MongoDB))
 
 	mux.HandleFunc("/status", Status())
 

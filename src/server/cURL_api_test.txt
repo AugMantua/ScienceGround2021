@@ -7,20 +7,14 @@ curl --location --request GET '127.0.0.1:8080/data/measures/add' \
     "Data" : 
     [
         {
-            "TerrariumID": "Terrain_1",
-            "SensorID": "Termo_1",
             "Value": "21.5",
             "Timestamp": "2010-12-30 12:10:04.100"
         },
         {
-            "TerrariumID": "Terrain_1",
-            "SensorID": "Termo_2",
             "Value": "22.5",
             "Timestamp": "2010-12-30 12:10:04.100"
         },
         {
-            "TerrariumID": "Terrain_1",
-            "SensorID": "Humidity_1",
             "Value": "75",
             "Timestamp": "2010-12-30 12:10:04.100"
         }
@@ -33,10 +27,10 @@ REQUEST Measures
 curl --location --request GET '127.0.0.1:8080/data/measures/get' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-    "TerrariumID": "Terrain_1",
+    "TerrariumID": "",
     "From": "2010-12-29",
     "To": "2011-01-01",
-    "SensorID": "-"
+    "SensorID": ""
  }
 '
 

@@ -1,8 +1,8 @@
 package main
 
 import (
+	"context"
 	"crypto/rand"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/golang/gddo/httputil/header"
-	_ "github.com/mattn/go-sqlite3"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func jsonDecodeToStruct(p interface{}, w http.ResponseWriter, r *http.Request) (interface{}, error) {
@@ -76,7 +76,7 @@ type measures_request_typ struct {
 	SensorID    string //If not set -> all
 }
 
-func AddMeasure(db *sql.DB) http.HandlerFunc {
+func AddMeasure(db *mongo.Database) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Content-Type") != "" {
@@ -95,12 +95,7 @@ func AddMeasure(db *sql.DB) http.HandlerFunc {
 		/*Data insert into DB*/
 		for index := range p.Data {
 			t_data := p.Data[index]
-			if insertMeasureCheck(db, t_data) {
-				insertMeasure(db, t_data)
-			} else {
-				fmt.Fprintf(w, "\nTerrarium-sensor link error\n %+v - %+v", t_data.TerrariumID, t_data.SensorID)
-			}
-
+			insertMeasure(db, t_data)
 		}
 	}
 }
@@ -118,7 +113,7 @@ func Status() http.HandlerFunc {
 	}
 }
 
-func StartSession(db *sql.DB) http.HandlerFunc {
+func StartSession(db *mongo.Database) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Content-Type") != "" {
 			value, _ := header.ParseValueAndParams(r.Header, "Content-Type")
@@ -145,7 +140,7 @@ func StartSession(db *sql.DB) http.HandlerFunc {
 		var newSK = string(bytes)
 
 		/*Extract data and send back*/
-		var ris = createSessionRow(db, newSK, request.TerrariumID, timestamp)
+		var ris = createSessionRow(db, newSK, request.TerrariumID.String(), timestamp)
 		/*Encode to json*/
 		message, err := json.Marshal(ris)
 		if err != nil {
@@ -156,7 +151,7 @@ func StartSession(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-func StopSession(db *sql.DB) http.HandlerFunc {
+func StopSession(db *mongo.Database) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Content-Type") != "" {
 			value, _ := header.ParseValueAndParams(r.Header, "Content-Type")
@@ -174,7 +169,7 @@ func StopSession(db *sql.DB) http.HandlerFunc {
 		var timestamp = fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
 
 		/*Extract data and send back*/
-		var ris = stopSession(db, request.SessionKey, request.TerrariumID, timestamp)
+		var ris = stopSession(db, request.SessionKey, string(request.TerrariumID.String()), timestamp)
 		/*Encode to json*/
 		message, err := json.Marshal(ris)
 		if err != nil {
@@ -185,7 +180,7 @@ func StopSession(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-func RequestMeasures(db *sql.DB) http.HandlerFunc {
+func RequestMeasures(db *mongo.Database, context context.Context) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Content-Type") != "" {
 			value, _ := header.ParseValueAndParams(r.Header, "Content-Type")
@@ -199,7 +194,7 @@ func RequestMeasures(db *sql.DB) http.HandlerFunc {
 		/*Decode json content*/
 		jsonDecodeToStruct(&request, w, r)
 		/*Extract data and send back*/
-		measures := getMeasures(db, request)
+		measures := getMeasures(db, request, context)
 		/*Encode to json*/
 		message, err := json.Marshal(measures)
 		if err != nil {
@@ -210,7 +205,7 @@ func RequestMeasures(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-func RequestTerrariumsList(db *sql.DB) http.HandlerFunc {
+func RequestTerrariumsList(db *mongo.Database) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		/*Extract data and send back*/
 		t_terrariums := getTerrariums(db)

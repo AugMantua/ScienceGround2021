@@ -7,4 +7,5 @@ require (
 	github.com/joho/godotenv v1.3.0 // indirect
 	github.com/mattn/go-sqlite3 v1.14.7
 	github.com/rs/cors v1.7.0
+	go.mongodb.org/mongo-driver v1.7.1 // indirect
 )
