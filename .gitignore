@@ -4,3 +4,5 @@ src/server/scripts/server_386_win.exe
 src/server/scripts/server_x64_win.exe
 src/server/src/__debug_bin
 src/server/.env
+src/server/.env.dev
+src/__debug_bin
