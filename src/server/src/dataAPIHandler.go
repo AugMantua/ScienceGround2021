@@ -105,17 +105,10 @@ func RequestMeasures(c *gin.Context) {
 
 }
 
-func Status() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		message := struct{ Status string }{Status: "OK"}
-		res, err := json.Marshal(message)
-		if err != nil {
-			http.Error(w, "", http.StatusInternalServerError)
-			log.Fatal(err.Error())
-		}
-		w.WriteHeader(http.StatusOK)
-		w.Write(res)
-	}
+func Status(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"Status": "OK",
+	})
 }
 
 func StartSession(db *mongo.Database) http.HandlerFunc {

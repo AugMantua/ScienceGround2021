@@ -38,3 +38,6 @@ REQUEST Terrariums
 
 curl --location --request GET '127.0.0.1:8080/data/terrariums/get'
 
+STATUS 
+
+curl --location --request GET '127.0.0.1:8080/status'    

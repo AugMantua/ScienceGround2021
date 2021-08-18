@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"log"
-	"net/http"
 	"os"
 
 	"github.com/gin-gonic/gin"
@@ -35,19 +34,23 @@ func main() {
 
 	mongo_connection, context := dataDBinit(os.Getenv("MONGODB"))
 
-	router.Use(DBApiMiddleware(mongo_connection, context))
 	//Closes db at the end of main
 	defer mongo_connection.Client().Disconnect(context)
 	//
-	mux := http.NewServeMux()
-	router.POST("/data/measures/add", AddMeasure)
-	router.GET("/data/measures/get", RequestMeasures)
+	data := router.Group("/data", DBApiMiddleware(mongo_connection, context))
+	{
+		measures := data.Group("/measures")
+		{
+			measures.POST("/add", AddMeasure)
+			measures.GET("/get", RequestMeasures)
+		}
+	}
+
+	router.GET("/status", Status)
 	//mux.HandleFunc("/data/terrariums/get", RequestTerrariumsList(MongoDB))
 
 	//mux.HandleFunc("/data/session/start", StartSession(MongoDB))
 	//mux.HandleFunc("/data/session/stop", StopSession(MongoDB))
-
-	mux.HandleFunc("/status", Status())
 
 	router.Run(":8080")
 
