@@ -1,7 +1,7 @@
 
 ADD Measure
 
-curl --location --request GET '127.0.0.1:8080/data/measures/add' \
+curl --location --request POST '127.0.0.1:8080/data/measures/add' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "Data" : 

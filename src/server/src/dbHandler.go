@@ -10,14 +10,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var _DB_TABLES = []string{
-	"measures",
-	"sensors",
-	"terrariums",
-	"terrariumsSensors",
-	"terrariumsLiveSession",
-}
-
 type sensorData struct {
 	TypeOfMeasure string `bson:"typeOfMeasure,omitempty"`
 	Extra_data    string `bson:"extraData,omitempty"`

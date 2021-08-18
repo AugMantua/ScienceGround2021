@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/golang/gddo/httputil/header"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -76,28 +77,32 @@ type measures_request_typ struct {
 	SensorID    string //If not set -> all
 }
 
-func AddMeasure(db *mongo.Database) http.HandlerFunc {
-
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("Content-Type") != "" {
-			value, _ := header.ParseValueAndParams(r.Header, "Content-Type")
-			if value != "application/json" {
-				msg := "Content-Type header is not application/json"
-				http.Error(w, msg, http.StatusUnsupportedMediaType)
-				return
-			}
-		}
-		var p measures_data
-		/*Decode json content*/
-		jsonDecodeToStruct(&p, w, r)
-		/*Data decoded*/
-		fmt.Fprintf(w, "Data: %+v", p)
-		/*Data insert into DB*/
-		for index := range p.Data {
-			t_data := p.Data[index]
-			insertMeasure(db, t_data)
-		}
+func AddMeasure(c *gin.Context) {
+	dbConnection := c.MustGet("databaseConn").(*mongo.Database)
+	var measures_input measures_data
+	if err := c.ShouldBindJSON(&measures_input); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, "Invalid json provided")
+		return
 	}
+	for index := range measures_input.Data {
+		t_data := measures_input.Data[index]
+		insertMeasure(dbConnection, t_data)
+	}
+}
+
+func RequestMeasures(c *gin.Context) {
+	dbConnection := c.MustGet("databaseConn").(*mongo.Database)
+	ctx := c.MustGet("databaseCtx").(context.Context)
+	var request measures_request_typ
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, "Invalid json provided")
+		return
+	}
+	measures := getMeasures(dbConnection, request, ctx)
+	c.JSON(200, gin.H{
+		"data": measures,
+	})
+
 }
 
 func Status() http.HandlerFunc {
@@ -172,31 +177,6 @@ func StopSession(db *mongo.Database) http.HandlerFunc {
 		var ris = stopSession(db, request.SessionKey, string(request.TerrariumID.String()), timestamp)
 		/*Encode to json*/
 		message, err := json.Marshal(ris)
-		if err != nil {
-			http.Error(w, "", http.StatusInternalServerError)
-			log.Fatal(err.Error())
-		}
-		w.Write(message)
-	}
-}
-
-func RequestMeasures(db *mongo.Database, context context.Context) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("Content-Type") != "" {
-			value, _ := header.ParseValueAndParams(r.Header, "Content-Type")
-			if value != "application/json" {
-				msg := "Content-Type header is not application/json"
-				http.Error(w, msg, http.StatusUnsupportedMediaType)
-				return
-			}
-		}
-		var request measures_request_typ
-		/*Decode json content*/
-		jsonDecodeToStruct(&request, w, r)
-		/*Extract data and send back*/
-		measures := getMeasures(db, request, context)
-		/*Encode to json*/
-		message, err := json.Marshal(measures)
 		if err != nil {
 			http.Error(w, "", http.StatusInternalServerError)
 			log.Fatal(err.Error())
