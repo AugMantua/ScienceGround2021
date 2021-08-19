@@ -41,3 +41,31 @@ curl --location --request GET '127.0.0.1:8080/data/terrariums/get'
 STATUS 
 
 curl --location --request GET '127.0.0.1:8080/status'    
+
+
+
+AUTH REQUEST
+
+curl --location --request POST '127.0.0.1:8080/devices/auth' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+        "MACAddres": "00:1B:44:11:3A:B7",
+        "MagicKey": "InmfNpOwCSJJhXbUnptbK5c9tdGb4CnDdPrx9WWSlu9FNELGKMfpCpAifJSpbMSHMxgN7IxKmyFlFmnF6dhF3dr3h4vnVGAze9Cpqf1z3dpIY5U37jbpmZqhNv09AaxK6WqIc3CqgYQRs7ROGWuTzBZ9vX2AVoATX0Nz0hixb9iuxUfCTRE8BqDmyhknYGWTGKubF2HuMcAsytgyL47pNiFMPcSMksBUm1hmA5EMSjSq91cjz3w2sJPldAezdZBV",
+        "TypeOfTerrarium": "Terrain",
+        "TerrariumAlias": "API_TEST_TERRARIUM",
+        "Sensors": [
+            {
+            "TypeOfMeasure": "Temperature_1",
+            "Extra_data": "°C"
+            },
+            {
+            "TypeOfMeasure": "Temperature_2",
+            "Extra_data": "°C"
+            },
+            {
+            "TypeOfMeasure": "Humidity_1",
+            "Extra_data": "%"
+            }
+        ]
+    }
+'

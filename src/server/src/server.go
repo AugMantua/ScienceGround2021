@@ -46,6 +46,11 @@ func main() {
 		}
 	}
 
+	devices := router.Group("/devices", DBApiMiddleware(mongo_connection, context))
+	{
+		devices.POST("/auth", AuthRequest)
+	}
+
 	router.GET("/status", Status)
 	//mux.HandleFunc("/data/terrariums/get", RequestTerrariumsList(MongoDB))
 

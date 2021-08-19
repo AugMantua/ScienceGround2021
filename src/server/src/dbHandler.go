@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"os"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -19,9 +20,12 @@ type terrariumData struct {
 	ID              primitive.ObjectID `bson:"_id,omitempty"`
 	TypeOfTerrarium string             `bson:"typeOfTerrarium,omitempty"`
 	TerrariumAlias  string             `bson:"terrariumAlias,omitempty"`
-	Sensors         sensorData         `bson:"sensorsIds,omitempty"`
+	Sensors         []sensorData       `bson:"sensorsIds,omitempty"`
 	Status          string             `bson:"status,omitempty"`
 	Sessions        primitive.ObjectID `bson:"sessions,omitempty"`
+	MACAddres       string             `bson:"macAddress,omitempty"`
+	MagicKey        string             `bson:"magicKey,omitempty"`
+	AuthState       bool               `bson:"authState"`
 }
 
 type terrariumsSession struct {
@@ -39,6 +43,14 @@ type single_measure_data struct {
 	Value       string             `bson:"value,omitempty"`
 	Timestamp   string             `bson:"timestamp,omitempty"`
 	SessionKey  string             `bson:"sessionKey,omitempty"`
+}
+
+type terrariumCredentials struct {
+	MACAddres       string       `bson:"macAddress,omitempty"`
+	MagicKey        string       `bson:"magicKey,omitempty"`
+	TypeOfTerrarium string       `bson:"typeOfTerrarium,omitempty"`
+	TerrariumAlias  string       `bson:"terrariumAlias,omitempty"`
+	Sensors         []sensorData `bson:"sensorsIds,omitempty"`
 }
 
 type measures_data struct {
@@ -143,4 +155,42 @@ func getTerrariums(db *mongo.Database) []terrariumData {
 		panic(err)
 	}
 	return terrariums
+}
+
+/*Try login*/
+func tryTerrariumLogin(db *mongo.Database, ctx context.Context, request terrariumCredentials) (terrariumData, error) {
+	var filter = bson.M{}
+	var terrarium terrariumData
+
+	if request.MACAddres != "" && request.MagicKey != "" {
+		filter["macAddress"] = request.MACAddres
+		filter["magicKey"] = request.MagicKey
+		filter["authState"] = true
+	} else {
+		return terrarium, errors.New("auth not found")
+	}
+
+	terrariumsCollection := db.Collection("terrariums")
+	element := terrariumsCollection.FindOne(ctx, filter)
+
+	if err := element.Decode(&terrarium); err != nil {
+		return terrarium, errors.New("auth not found")
+	}
+	return terrarium, nil
+}
+
+func saveUnauthAttempt(db *mongo.Database, ctx context.Context, request terrariumCredentials) error {
+	unauthTerrariums := db.Collection("terrariums")
+
+	terrarium := terrariumData{
+		MACAddres:       request.MACAddres,
+		MagicKey:        request.MagicKey,
+		TerrariumAlias:  request.TerrariumAlias,
+		TypeOfTerrarium: request.TypeOfTerrarium,
+		AuthState:       false,
+		Sensors:         request.Sensors,
+	}
+
+	_, err := unauthTerrariums.InsertOne(ctx, terrarium)
+	return err
 }
