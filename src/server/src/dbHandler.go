@@ -29,7 +29,7 @@ type terrariumData struct {
 	MACAddres       string                `bson:"macAddress,omitempty"`
 	MagicKey        string                `bson:"magicKey,omitempty"`
 	AuthState       bool                  `bson:"authState"`
-	Measures        []single_measure_data `bson:"measures"`
+	Measures        []single_measure_data `bson:"measures,omitempty"`
 }
 
 type terrariumGet struct {
@@ -114,14 +114,9 @@ func insertMeasure(db *mongo.Database, ctx context.Context, measure push_measure
 	singleMeasure.Timestamp = measure.Timestamp
 	singleMeasure.Value = measure.Value
 
-	var update bson.M
-	if len(terrarium.Measures) != 0 {
-		update = bson.M{"$push": bson.M{"measures": singleMeasure}}
-	} else {
-		update = bson.M{"$set": bson.M{"measures": singleMeasure}}
-	}
+	update := bson.M{"$push": bson.M{"measures": singleMeasure}}
 
-	_, err = db.Collection("terrarium").UpdateByID(ctx, terrarium.ID, update)
+	_, err = db.Collection(_TERRARIUMS_COLLECTION).UpdateByID(ctx, id, update)
 	if err != nil {
 		return err
 	}
