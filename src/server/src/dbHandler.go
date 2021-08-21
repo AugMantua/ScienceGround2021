@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -12,19 +13,32 @@ import (
 )
 
 type sensorData struct {
-	TypeOfMeasure string `bson:"typeOfMeasure,omitempty"`
-	Extra_data    string `bson:"extraData,omitempty"`
+	ID            primitive.ObjectID `bson:"_id,omitempty"`
+	Name          string             `bson:"name"`
+	TypeOfMeasure string             `bson:"typeOfMeasure,omitempty"`
+	Extra_data    string             `bson:"extraData,omitempty"`
 }
 
 type terrariumData struct {
+	ID              primitive.ObjectID    `bson:"_id,omitempty"`
+	TypeOfTerrarium string                `bson:"typeOfTerrarium,omitempty"`
+	TerrariumAlias  string                `bson:"terrariumAlias,omitempty"`
+	Sensors         []sensorData          `bson:"sensorsIds,omitempty"`
+	Status          string                `bson:"status,omitempty"`
+	Sessions        primitive.ObjectID    `bson:"sessions,omitempty"`
+	MACAddres       string                `bson:"macAddress,omitempty"`
+	MagicKey        string                `bson:"magicKey,omitempty"`
+	AuthState       bool                  `bson:"authState"`
+	Measures        []single_measure_data `bson:"measures"`
+}
+
+type terrariumGet struct {
 	ID              primitive.ObjectID `bson:"_id,omitempty"`
 	TypeOfTerrarium string             `bson:"typeOfTerrarium,omitempty"`
 	TerrariumAlias  string             `bson:"terrariumAlias,omitempty"`
 	Sensors         []sensorData       `bson:"sensorsIds,omitempty"`
 	Status          string             `bson:"status,omitempty"`
 	Sessions        primitive.ObjectID `bson:"sessions,omitempty"`
-	MACAddres       string             `bson:"macAddress,omitempty"`
-	MagicKey        string             `bson:"magicKey,omitempty"`
 	AuthState       bool               `bson:"authState"`
 }
 
@@ -37,12 +51,19 @@ type terrariumsSession struct {
 }
 
 type single_measure_data struct {
-	ID          primitive.ObjectID `bson:"_id,omitempty"`
-	TerrariumID primitive.ObjectID `bson:"terrariumId,omitempty"`
-	SensorID    primitive.ObjectID `bson:"sensorId,omitempty"`
-	Value       string             `bson:"value,omitempty"`
-	Timestamp   string             `bson:"timestamp,omitempty"`
-	SessionKey  string             `bson:"sessionKey,omitempty"`
+	ID         primitive.ObjectID `bson:"_id,omitempty"`
+	SensorName string             `bson:"sensorId,omitempty"`
+	Value      string             `bson:"value,omitempty"`
+	Timestamp  string             `bson:"timestamp,omitempty"`
+	SessionKey string             `bson:"sessionKey,omitempty"`
+}
+
+type push_measure_request_typ struct {
+	TerrariumID string `bson:"terrariumId"`
+	SensorName  string `bson:"sensorId,omitempty"`
+	Value       string `bson:"value,omitempty"`
+	Timestamp   string `bson:"timestamp,omitempty"`
+	SessionKey  string `bson:"sessionKey,omitempty"`
 }
 
 type terrariumCredentials struct {
@@ -54,14 +75,57 @@ type terrariumCredentials struct {
 }
 
 type measures_data struct {
-	Data []single_measure_data
+	Data []push_measure_request_typ
 }
 
-func insertMeasure(db *mongo.Database, measure single_measure_data) {
-	_, err := db.Collection("measures").InsertOne(context.TODO(), measure)
+var _TERRARIUMS_COLLECTION = "terrariums"
+
+func insertMeasure(db *mongo.Database, ctx context.Context, measure push_measure_request_typ) error {
+
+	var terrarium terrariumData
+	var singleMeasure single_measure_data
+
+	id, err := primitive.ObjectIDFromHex(measure.TerrariumID)
+
 	if err != nil {
-		panic(err)
+		return errors.New("can't cast request terrariumID to objectID")
 	}
+
+	err = db.Collection(_TERRARIUMS_COLLECTION).FindOne(ctx, bson.M{"_id": id, "authState": true}).Decode(&terrarium)
+
+	if err != nil {
+		return errors.New("can't find requested terrarium")
+	}
+
+	var presence bool
+	presence = false
+	for _, sensor := range terrarium.Sensors {
+		if sensor.Name == measure.SensorName {
+			presence = true
+		}
+	}
+	if !presence {
+		return errors.New("can't find requested sensor")
+	}
+
+	singleMeasure.ID = primitive.NewObjectIDFromTimestamp(time.Now())
+	singleMeasure.SensorName = measure.SensorName
+	singleMeasure.SessionKey = measure.SessionKey
+	singleMeasure.Timestamp = measure.Timestamp
+	singleMeasure.Value = measure.Value
+
+	var update bson.M
+	if len(terrarium.Measures) != 0 {
+		update = bson.M{"$push": bson.M{"measures": singleMeasure}}
+	} else {
+		update = bson.M{"$set": bson.M{"measures": singleMeasure}}
+	}
+
+	_, err = db.Collection("terrarium").UpdateByID(ctx, terrarium.ID, update)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 /*Main dataDB init
@@ -142,16 +206,16 @@ func stopSession(db *mongo.Database, SessionKey string, terrariumID string, time
 	return true
 }
 
-func getTerrariums(db *mongo.Database) []terrariumData {
+func getTerrariums(db *mongo.Database, ctx context.Context) []terrariumGet {
 
-	var terrariums []terrariumData
+	var terrariums []terrariumGet
 
-	terrariumCollection := db.Collection("terrariums")
-	cursor, err := terrariumCollection.Find(context.TODO(), nil)
+	terrariumCollection := db.Collection(_TERRARIUMS_COLLECTION)
+	cursor, err := terrariumCollection.Find(ctx, bson.M{"authState": true})
 	if err != nil {
 		panic(err)
 	}
-	if err = cursor.All(context.TODO(), &terrariums); err != nil {
+	if err = cursor.All(ctx, &terrariums); err != nil {
 		panic(err)
 	}
 	return terrariums
@@ -170,7 +234,7 @@ func tryTerrariumLogin(db *mongo.Database, ctx context.Context, request terrariu
 		return terrarium, errors.New("auth not found")
 	}
 
-	terrariumsCollection := db.Collection("terrariums")
+	terrariumsCollection := db.Collection(_TERRARIUMS_COLLECTION)
 	element := terrariumsCollection.FindOne(ctx, filter)
 
 	if err := element.Decode(&terrarium); err != nil {
@@ -180,7 +244,11 @@ func tryTerrariumLogin(db *mongo.Database, ctx context.Context, request terrariu
 }
 
 func saveUnauthAttempt(db *mongo.Database, ctx context.Context, request terrariumCredentials) error {
-	unauthTerrariums := db.Collection("terrariums")
+	unauthTerrariums := db.Collection(_TERRARIUMS_COLLECTION)
+
+	for index, _ := range request.Sensors {
+		request.Sensors[index].ID = primitive.NewObjectID()
+	}
 
 	terrarium := terrariumData{
 		MACAddres:       request.MACAddres,

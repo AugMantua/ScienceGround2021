@@ -79,6 +79,8 @@ type measures_request_typ struct {
 
 func AddMeasure(c *gin.Context) {
 	dbConnection := c.MustGet("databaseConn").(*mongo.Database)
+	ctx := c.MustGet("databaseCtx").(context.Context)
+
 	var measures_input measures_data
 	if err := c.ShouldBindJSON(&measures_input); err != nil {
 		c.JSON(http.StatusUnprocessableEntity, "Invalid json provided")
@@ -86,7 +88,11 @@ func AddMeasure(c *gin.Context) {
 	}
 	for index := range measures_input.Data {
 		t_data := measures_input.Data[index]
-		insertMeasure(dbConnection, t_data)
+		err := insertMeasure(dbConnection, ctx, t_data)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, err.Error())
+			return
+		}
 	}
 }
 
@@ -178,17 +184,16 @@ func StopSession(db *mongo.Database) http.HandlerFunc {
 	}
 }
 
-func RequestTerrariumsList(db *mongo.Database) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		/*Extract data and send back*/
-		t_terrariums := getTerrariums(db)
-		/*Encode to json*/
-		message, err := json.Marshal(t_terrariums)
-		if err != nil {
-			http.Error(w, "", http.StatusInternalServerError)
-			log.Fatal(err.Error())
-		}
-		w.Write(message)
-	}
+func RequestTerrariumsList(c *gin.Context) {
+
+	dbConnection := c.MustGet("databaseConn").(*mongo.Database)
+	ctx := c.MustGet("databaseCtx").(context.Context)
+
+	/*Extract data and send back*/
+	t_terrariums := getTerrariums(dbConnection, ctx)
+
+	c.JSON(200, gin.H{
+		"data": t_terrariums,
+	})
 
 }

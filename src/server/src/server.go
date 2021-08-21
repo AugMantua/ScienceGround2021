@@ -44,6 +44,10 @@ func main() {
 			measures.POST("/add", AddMeasure)
 			measures.GET("/get", RequestMeasures)
 		}
+		terrariums := data.Group("/terrariums")
+		{
+			terrariums.GET("/get", RequestTerrariumsList)
+		}
 	}
 
 	devices := router.Group("/devices", DBApiMiddleware(mongo_connection, context))
@@ -52,7 +56,6 @@ func main() {
 	}
 
 	router.GET("/status", Status)
-	//mux.HandleFunc("/data/terrariums/get", RequestTerrariumsList(MongoDB))
 
 	//mux.HandleFunc("/data/session/start", StartSession(MongoDB))
 	//mux.HandleFunc("/data/session/stop", StopSession(MongoDB))
