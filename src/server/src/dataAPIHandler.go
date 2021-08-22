@@ -68,11 +68,12 @@ func jsonDecodeToStruct(p interface{}, w http.ResponseWriter, r *http.Request) (
 }
 
 type measures_request_typ struct {
-	TerrariumID string
-	From        string
-	To          string
-	SensorID    string //If not set -> all
-	SessionKey  string
+	TerrariumID    string
+	From           string
+	To             string
+	SensorID       string //If not set -> all
+	SessionKey     string
+	LastUpdateOnly bool
 }
 
 func AddMeasure(c *gin.Context) {
@@ -84,13 +85,11 @@ func AddMeasure(c *gin.Context) {
 		c.JSON(http.StatusUnprocessableEntity, "Invalid json provided")
 		return
 	}
-	for index := range measures_input.Data {
-		t_data := measures_input.Data[index]
-		err := insertMeasure(dbConnection, ctx, t_data)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, err.Error())
-			return
-		}
+
+	err := insertMeasures(dbConnection, ctx, measures_input.Data)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, err.Error())
+		return
 	}
 }
 

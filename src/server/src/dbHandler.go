@@ -31,6 +31,7 @@ type terrariumData struct {
 	MagicKey        string                `bson:"magicKey,omitempty"`
 	AuthState       bool                  `bson:"authState"`
 	Measures        []single_measure_data `bson:"measures,omitempty"`
+	LastUpdate      []single_measure_data `bson:"lastUpdate,omitempty"`
 }
 
 type terrariumGet struct {
@@ -80,55 +81,70 @@ type measures_data struct {
 
 var _TERRARIUMS_COLLECTION = "terrariums"
 
-func insertMeasure(db *mongo.Database, ctx context.Context, measure push_measure_request_typ) error {
+func insertMeasures(db *mongo.Database, ctx context.Context, measures []push_measure_request_typ) error {
 
 	var terrarium terrariumData
-	var singleMeasure single_measure_data
+	var updateMeasures []single_measure_data
 
-	id, err := primitive.ObjectIDFromHex(measure.TerrariumID)
+	id, err := primitive.ObjectIDFromHex(measures[0].TerrariumID)
 
-	if err != nil {
-		return errors.New("can't cast request terrariumID to objectID")
-	}
+	for _, measure := range measures {
+		var singleMeasure single_measure_data
 
-	err = db.Collection(_TERRARIUMS_COLLECTION).FindOne(ctx, bson.M{"_id": id, "authState": true}).Decode(&terrarium)
-
-	if err != nil {
-		return errors.New("can't find requested terrarium")
-	}
-
-	var presence bool
-	presence = false
-	for _, sensor := range terrarium.Sensors {
-		if sensor.Name == measure.SensorName {
-			presence = true
+		if err != nil {
+			return errors.New("can't cast request terrariumID to objectID")
 		}
-	}
-	if !presence {
-		return errors.New("can't find requested sensor")
-	}
 
-	if measure.SessionKey != "" {
-		sessionKey, _ := primitive.ObjectIDFromHex(measure.SessionKey)
+		err = db.Collection(_TERRARIUMS_COLLECTION).FindOne(ctx, bson.M{"_id": id, "authState": true}).Decode(&terrarium)
+
+		if err != nil {
+			return errors.New("can't find requested terrarium")
+		}
+
+		var presence bool
 		presence = false
-		for _, session := range terrarium.Sessions {
-			if session.SessionKey == sessionKey {
+		for _, sensor := range terrarium.Sensors {
+			if sensor.Name == measure.SensorName {
 				presence = true
 			}
 		}
 		if !presence {
-			return errors.New("can't find requested session")
+			return errors.New("can't find requested sensor")
 		}
-		singleMeasure.SessionKey = sessionKey
+
+		if measure.SessionKey != "" {
+			sessionKey, _ := primitive.ObjectIDFromHex(measure.SessionKey)
+			presence = false
+			for _, session := range terrarium.Sessions {
+				if session.SessionKey == sessionKey {
+					presence = true
+				}
+			}
+			if !presence {
+				return errors.New("can't find requested session")
+			}
+			singleMeasure.SessionKey = sessionKey
+		}
+
+		singleMeasure.ID = primitive.NewObjectIDFromTimestamp(time.Now())
+		singleMeasure.SensorName = measure.SensorName
+		singleMeasure.Timestamp = measure.Timestamp
+		singleMeasure.Value = measure.Value
+
+		updateMeasures = append(updateMeasures, singleMeasure)
 	}
 
-	singleMeasure.ID = primitive.NewObjectIDFromTimestamp(time.Now())
-	singleMeasure.SensorName = measure.SensorName
-	singleMeasure.Timestamp = measure.Timestamp
-	singleMeasure.Value = measure.Value
+	//Quick n dirty, find a way to generate bson programmatically
+	var update bson.M
 
-	update := bson.M{"$push": bson.M{"measures": singleMeasure}}
-
+	for _, singleMeasure := range updateMeasures {
+		update = bson.M{"$push": bson.M{"measures": singleMeasure}}
+		_, err = db.Collection(_TERRARIUMS_COLLECTION).UpdateByID(ctx, id, update)
+		if err != nil {
+			return err
+		}
+	}
+	update = bson.M{"$set": bson.M{"lastUpdate": updateMeasures}}
 	_, err = db.Collection(_TERRARIUMS_COLLECTION).UpdateByID(ctx, id, update)
 	if err != nil {
 		return err
@@ -184,6 +200,10 @@ func getMeasures(db *mongo.Database, request measures_request_typ, ctx context.C
 	if err != nil {
 		return tempTerrarium.Measures, err
 	}
+	if request.LastUpdateOnly {
+		return tempTerrarium.LastUpdate, nil
+	}
+
 	return tempTerrarium.Measures, nil
 }
 
