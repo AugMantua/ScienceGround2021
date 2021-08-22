@@ -1,330 +1,314 @@
 package main
 
 import (
-	"database/sql"
+	"context"
+	"errors"
 	"fmt"
-	"log"
 	"os"
+	"time"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-const _DB_NAME = "sqlite-scienceground.db"
-
-var _DB_TABLES = []string{
-	"measures",
-	"sensors",
-	"terrariums",
-	"terrariumsSensors",
-}
-
 type sensorData struct {
-	SensorID      string
-	TypeOfMeasure string
-	Extra_data    string
+	ID            primitive.ObjectID `bson:"_id,omitempty"`
+	Name          string             `bson:"name"`
+	TypeOfMeasure string             `bson:"typeOfMeasure,omitempty"`
+	Extra_data    string             `bson:"extraData,omitempty"`
 }
 
 type terrariumData struct {
-	TerrariumID     string
-	TypeOfTerrarium string
-	TerrariumAlias  string
-	SensorsIds      []sensorData
-	Status          string
+	ID              primitive.ObjectID    `bson:"_id,omitempty"`
+	TypeOfTerrarium string                `bson:"typeOfTerrarium,omitempty"`
+	TerrariumAlias  string                `bson:"terrariumAlias,omitempty"`
+	Sensors         []sensorData          `bson:"sensorsIds,omitempty"`
+	Status          string                `bson:"status,omitempty"`
+	Sessions        []sessionData         `bson:"sessions,omitempty"`
+	MACAddres       string                `bson:"macAddress,omitempty"`
+	MagicKey        string                `bson:"magicKey,omitempty"`
+	AuthState       bool                  `bson:"authState"`
+	Measures        []single_measure_data `bson:"measures,omitempty"`
+	LastUpdate      []single_measure_data `bson:"lastUpdate,omitempty"`
 }
 
-type terrariumsSensors struct {
-	TerrariumID string
-	SensorID    string
+type terrariumGet struct {
+	ID              primitive.ObjectID `bson:"_id,omitempty"`
+	TypeOfTerrarium string             `bson:"typeOfTerrarium,omitempty"`
+	TerrariumAlias  string             `bson:"terrariumAlias,omitempty"`
+	Sensors         []sensorData       `bson:"sensorsIds,omitempty"`
+	Status          string             `bson:"status,omitempty"`
+	Sessions        []sessionData      `bson:"sessions,omitempty"`
+	AuthState       bool               `bson:"authState"`
 }
 
-type terrariumsSession struct {
-	TerrariumID string
-	SessionKey    string
-	TimestampStart   string
-	TimestampEnd   string
+type sessionData struct {
+	SessionKey     primitive.ObjectID `bson:"sessionKey"`
+	TimestampStart string             `bson:"timestampStart,omitempty"`
+	TimestampEnd   string             `bson:"timestampEnd,omitempty"`
+	IsAlive        bool               `bson:"isAlive"`
 }
 
 type single_measure_data struct {
-	TerrariumID string
-	SensorID    string
-	Value       string
-	Timestamp   string
-	SessionKey  string
+	ID         primitive.ObjectID `bson:"_id,omitempty"`
+	SensorName string             `bson:"sensorId,omitempty"`
+	Value      string             `bson:"value,omitempty"`
+	Timestamp  string             `bson:"timestamp,omitempty"`
+	SessionKey primitive.ObjectID `bson:"sessionKey,omitempty"`
+}
+
+type push_measure_request_typ struct {
+	TerrariumID string `bson:"terrariumId"`
+	SensorName  string `bson:"sensorId,omitempty"`
+	Value       string `bson:"value,omitempty"`
+	Timestamp   string `bson:"timestamp,omitempty"`
+	SessionKey  string `bson:"sessionKey,omitempty"`
+}
+
+type terrariumCredentials struct {
+	MACAddres       string       `bson:"macAddress,omitempty"`
+	MagicKey        string       `bson:"magicKey,omitempty"`
+	TypeOfTerrarium string       `bson:"typeOfTerrarium,omitempty"`
+	TerrariumAlias  string       `bson:"terrariumAlias,omitempty"`
+	Sensors         []sensorData `bson:"sensorsIds,omitempty"`
 }
 
 type measures_data struct {
-	Data []single_measure_data
+	Data []push_measure_request_typ
 }
 
-func InitNewDBFile() {
-	os.Remove(_DB_NAME)
-	file, err := os.Create(_DB_NAME) // Create SQLite file
-	if err != nil {
-		log.Fatal(err.Error())
+var _TERRARIUMS_COLLECTION = "terrariums"
+
+func insertMeasures(db *mongo.Database, ctx context.Context, measures []push_measure_request_typ) error {
+
+	var terrarium terrariumData
+	var updateMeasures []single_measure_data
+
+	id, err := primitive.ObjectIDFromHex(measures[0].TerrariumID)
+
+	for _, measure := range measures {
+		var singleMeasure single_measure_data
+
+		if err != nil {
+			return errors.New("can't cast request terrariumID to objectID")
+		}
+
+		err = db.Collection(_TERRARIUMS_COLLECTION).FindOne(ctx, bson.M{"_id": id, "authState": true}).Decode(&terrarium)
+
+		if err != nil {
+			return errors.New("can't find requested terrarium")
+		}
+
+		var presence bool
+		presence = false
+		for _, sensor := range terrarium.Sensors {
+			if sensor.Name == measure.SensorName {
+				presence = true
+			}
+		}
+		if !presence {
+			return errors.New("can't find requested sensor")
+		}
+
+		if measure.SessionKey != "" {
+			sessionKey, _ := primitive.ObjectIDFromHex(measure.SessionKey)
+			presence = false
+			for _, session := range terrarium.Sessions {
+				if session.SessionKey == sessionKey {
+					presence = true
+				}
+			}
+			if !presence {
+				return errors.New("can't find requested session")
+			}
+			singleMeasure.SessionKey = sessionKey
+		}
+
+		singleMeasure.ID = primitive.NewObjectIDFromTimestamp(time.Now())
+		singleMeasure.SensorName = measure.SensorName
+		singleMeasure.Timestamp = measure.Timestamp
+		singleMeasure.Value = measure.Value
+
+		updateMeasures = append(updateMeasures, singleMeasure)
 	}
-	file.Close()
-	log.Println(_DB_NAME)
-}
 
-func CheckDBFile(dbPath string) bool {
-	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
-		return false
-	} else {
-		return true
-	}
-}
+	//Quick n dirty, find a way to generate bson programmatically
+	var update bson.M
 
-func CheckDBTables(db *sql.DB, standardTables []string) bool {
-	flag := true
-	for index := range standardTables {
-		_, table_check := db.Query("select * from " + standardTables[index] + ";")
-		if table_check == nil {
-			fmt.Println("table is there")
-		} else {
-			fmt.Println("table not there")
-			flag = false
+	for _, singleMeasure := range updateMeasures {
+		update = bson.M{"$push": bson.M{"measures": singleMeasure}}
+		_, err = db.Collection(_TERRARIUMS_COLLECTION).UpdateByID(ctx, id, update)
+		if err != nil {
+			return err
 		}
 	}
-	return flag
-}
-
-func CreateDBTables(db *sql.DB) {
-	/*Measures*/
-	createMeasureTable := `CREATE TABLE measures (
-		"idMeasure" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
-		"terrariumID" TEXT,
-		"sensorID" TEXT,
-		"value" TEXT,
-		"timestamp" TEXT,
-		"SessionKey" TEXT
-	);`
-	log.Println("Create measures table...")
-	statement, err := db.Prepare(createMeasureTable) // Prepare SQL Statement
+	update = bson.M{"$set": bson.M{"lastUpdate": updateMeasures}}
+	_, err = db.Collection(_TERRARIUMS_COLLECTION).UpdateByID(ctx, id, update)
 	if err != nil {
-		log.Fatal(err.Error())
+		return err
 	}
-	statement.Exec() // Execute SQL Statements
-	log.Println("measures table created")
-	/*Sensors*/
-	createSensorTable := `CREATE TABLE sensors (
-		"sensorID" TEXT NOT NULL PRIMARY KEY,
-		"typeOfMeasure" TEXT,
-		"extra_data" TEXT
-	);`
-	log.Println("Create Sensors table...")
-	statement, err = db.Prepare(createSensorTable) // Prepare SQL Statement
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-	statement.Exec() // Execute SQL Statements
-	log.Println("Sensors table created")
-	/*Terrariums*/
-	createTerrariumsTable := `CREATE TABLE "terrariums" (
-		"terrariumID"	TEXT NOT NULL,
-		"typeOfTerrarium"	TEXT,
-		"terrariumAlias"	TEXT,
-		Status INTEGER NOT NULL DEFAULT '0',
-		PRIMARY KEY("terrariumID")
-	);`
-	log.Println("Create Terrariums table...")
-	statement, err = db.Prepare(createTerrariumsTable) // Prepare SQL Statement
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-	statement.Exec() // Execute SQL Statements
-	log.Println("Terrariums table created")
-
-	createTerrariumsSensor := `
-	CREATE TABLE "terrariumsSensors" (
-		"terrariumID"	TEXT NOT NULL,
-		"sensorID"	TEXT NOT NULL,
-		PRIMARY KEY("sensorID","terrariumID")
-	);`
-	log.Println("Create Terrariums-Sensors table...")
-	statement, err = db.Prepare(createTerrariumsSensor) // Prepare SQL Statement
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-	statement.Exec() // Execute SQL Statements
-	log.Println("Terrariums-Sensors table created")
-
-	createTerrariumsLiveSession := `
-	CREATE TABLE "terrariumsLiveSession" (
-		"terrariumID"	TEXT NOT NULL,
-		"SessionKey"	TEXT NOT NULL,
-		"timestampStart" TEXT NOT NULL,
-		"timestampEnd" TEXT NOT NULL,
-		PRIMARY KEY("SessionKey","terrariumID")
-	);`
-	log.Println("Create Terrariums-Serrion table...")
-	statement, err = db.Prepare(createTerrariumsLiveSession) // Prepare SQL Statement
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-	statement.Exec() // Execute SQL Statements
-	log.Println("Terrariums-Serrion table created")
-}
-
-func insertMeasureCheck(db *sql.DB, measure single_measure_data) bool {
-	log.Println("Checking data consistency")
-	sql_check_terrarium_existance := `SELECT terrariumID from terrariumsSensors
-									  WHERE terrariumID = ?
-									  AND sensorID = ?`
-	statement, err := db.Prepare(sql_check_terrarium_existance) // Prepare statement.
-	// This is good to avoid SQL injections
-	if err != nil {
-		log.Fatalln(err.Error())
-	}
-	var t_id string
-	err = statement.QueryRow(measure.TerrariumID, measure.SensorID).Scan(&t_id)
-	if err != nil {
-		if err != sql.ErrNoRows {
-			log.Fatalln(err.Error())
-		} else {
-			return false
-		}
-	}
-	return true
-}
-
-func insertMeasure(db *sql.DB, measure single_measure_data) {
-	log.Println("Inserting measure record")
-	insertMeasureSQL := `INSERT INTO measures(terrariumID, sensorID, value, timestamp) VALUES (?,?, ?, ?)`
-	statement, err := db.Prepare(insertMeasureSQL) // Prepare statement.
-	// This is good to avoid SQL injections
-	if err != nil {
-		log.Fatalln(err.Error())
-	}
-	_, err = statement.Exec(measure.TerrariumID, measure.SensorID, measure.Value, measure.Timestamp)
-	if err != nil {
-		log.Fatalln(err.Error())
-	}
+	return nil
 }
 
 /*Main dataDB init
  *Check presence or create DB
  *Check Table presence or create them
+ * TODO -> check context logic and replace context.Background in case
  */
-func dataDBinit(dbPath string) *sql.DB {
-	if !CheckDBFile(dbPath) {
-		InitNewDBFile()
+func dataDBinit(dbPath string) (*mongo.Database, context.Context) {
+	//ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx := context.Background()
+	mongoDBClient, err := mongo.Connect(ctx, options.Client().ApplyURI(os.Getenv("ATLAS_URI")))
+	if err != nil {
+		panic(err)
 	}
-	sqliteDatabase, _ := sql.Open("sqlite3", "./"+dbPath) //Open sqliteDB
-	//Check db tables existence
-	if !CheckDBTables(sqliteDatabase, _DB_TABLES) {
-		CreateDBTables(sqliteDatabase)
-	}
-	return sqliteDatabase
+	database := mongoDBClient.Database(os.Getenv("MONGODB_NAME"))
+	return database, ctx
 }
 
 /*Extract measures*/
-func getMeasures(db *sql.DB, request measures_request_typ) []single_measure_data {
-	var measures []single_measure_data
-	/*Measures*/
-	getMeasure := `SELECT terrariumID, sensorID, timestamp, value from measures where 
-		terrariumID = ? AND 
-		( timestamp BETWEEN ? AND ?) AND
-		sensorID = ?
-		ORDER BY timestamp
-	;`
+func getMeasures(db *mongo.Database, request measures_request_typ, ctx context.Context) ([]single_measure_data, error) {
+	var tempTerrarium terrariumData
+	var filter = bson.M{}
 
-	statement, err := db.Prepare(getMeasure) // Prepare SQL Statement
+	if request.SensorID != "" {
+		filter["measures.sensorId"] = request.SensorID
+	}
+	if request.From != "" && request.To != "" {
+		filter["measures.timestamp"] = bson.M{"$gt": request.From, "$lt": request.To}
+	}
+
+	if request.TerrariumID != "" {
+		id, e := primitive.ObjectIDFromHex(request.TerrariumID)
+		if e != nil {
+			return tempTerrarium.Measures, errors.New("validation error, terraiumID")
+		}
+		filter["_id"] = id
+	} else {
+		return tempTerrarium.Measures, errors.New("validation error, terraiumID is needed")
+	}
+
+	if request.SessionKey != "" {
+		idSession, _ := primitive.ObjectIDFromHex(request.SessionKey)
+		filter["measures.sessionKey"] = idSession
+	}
+
+	measuresCollection := db.Collection(_TERRARIUMS_COLLECTION)
+	err := measuresCollection.FindOne(ctx, filter).Decode(&tempTerrarium)
 	if err != nil {
-		log.Fatal(err.Error())
+		return tempTerrarium.Measures, err
 	}
-	row, err_r := statement.Query(request.TerrariumID, request.From, request.To, request.SensorID) // Execute SQL Statements
-	if err_r != nil {
-		log.Fatal((err_r.Error()))
+	if request.LastUpdateOnly {
+		return tempTerrarium.LastUpdate, nil
 	}
-	for row.Next() {
-		var measure single_measure_data
-		row.Scan(&measure.TerrariumID, &measure.SensorID, &measure.Timestamp, &measure.Value)
-		measures = append(measures, measure)
-	}
-	return measures
+
+	return tempTerrarium.Measures, nil
 }
 
-func createSessionRow(db *sql.DB, SessionKey string, terrariumID string, timestampStart string) string{
-	log.Println("Inserting session record")
-	createSessionSQL := `INSERT INTO terrariumsLiveSession(terrariumID, SessionKey, timestampStart) VALUES (?,?, ?)`
-	statement, err := db.Prepare(createSessionSQL) // Prepare statement.
-	// This is good to avoid SQL injections
+func createSession(db *mongo.Database, ctx context.Context, terrariumID string) (string, error) {
+	var session sessionData
+
+	session.SessionKey = primitive.NewObjectIDFromTimestamp(time.Now())
+	session.IsAlive = true
+	var t = time.Now()
+	session.TimestampStart = fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
+
+	update := bson.M{"$push": bson.M{"sessions": session}}
+
+	id, err := primitive.ObjectIDFromHex(terrariumID)
+
 	if err != nil {
-		log.Fatalln(err.Error())
+		return "", errors.New("can't cast request terrariumID to objectID")
 	}
-	_, err = statement.Exec(terrariumID, SessionKey, timestampStart)
+	_, err = db.Collection(_TERRARIUMS_COLLECTION).UpdateByID(ctx, id, update)
 	if err != nil {
-		log.Fatalln(err.Error())
-		return "err"
+		return "", err
 	}
-	return SessionKey;
+
+	return session.SessionKey.Hex(), nil
 }
 
-func stopSession(db *sql.DB, SessionKey string, terrariumID string, timestampEnd string) bool{
-	log.Println("Inserting session record")
-	endSessionSQL := `UPDATE terrariumsLiveSession timestampEnd	= ? WHERE SessionKey = ? AND terrariumID = ? `
-	statement, err := db.Prepare(endSessionSQL) // Prepare statement.
-	// This is good to avoid SQL injections
-	if err != nil {
-		log.Fatalln(err.Error())
+func stopSession(db *mongo.Database, ctx context.Context, SessionKey string, terrariumID string) error {
+	var err error
+
+	terrariumId, _ := primitive.ObjectIDFromHex(terrariumID)
+	sessionId, _ := primitive.ObjectIDFromHex(SessionKey)
+
+	if terrariumId == primitive.NilObjectID ||
+		sessionId == primitive.NilObjectID {
+		return errors.New("terrarium - sessionKey mismatch")
 	}
-	_, err = statement.Exec(timestampEnd, SessionKey, terrariumID)
-	if err != nil {
-		log.Fatalln(err.Error())
-		return false;
+
+	var query = bson.M{}
+	query["_id"] = terrariumId
+	query["sessions.sessionKey"] = sessionId
+
+	update := bson.M{
+		"$set": bson.M{
+			"sessions.$.isAlive": false,
+		},
 	}
-	return true;
+
+	_, err = db.Collection(_TERRARIUMS_COLLECTION).UpdateMany(ctx, query, update)
+
+	return err
 }
 
-func getTerrariums(db *sql.DB) []terrariumData {
+func getTerrariums(db *mongo.Database, ctx context.Context) []terrariumGet {
 
-	var t_terrariums []terrariumData
+	var terrariums []terrariumGet
 
-	t_query := `SELECT * from terrariums ;`
-
-	statement, err := db.Prepare(t_query) // Prepare SQL Statement
+	terrariumCollection := db.Collection(_TERRARIUMS_COLLECTION)
+	cursor, err := terrariumCollection.Find(ctx, bson.M{"authState": true})
 	if err != nil {
-		log.Fatal(err.Error())
+		panic(err)
+	}
+	if err = cursor.All(ctx, &terrariums); err != nil {
+		panic(err)
+	}
+	return terrariums
+}
+
+/*Try login*/
+func tryTerrariumLogin(db *mongo.Database, ctx context.Context, request terrariumCredentials) (terrariumData, error) {
+	var filter = bson.M{}
+	var terrarium terrariumData
+
+	if request.MACAddres != "" && request.MagicKey != "" {
+		filter["macAddress"] = request.MACAddres
+		filter["magicKey"] = request.MagicKey
+		filter["authState"] = true
+	} else {
+		return terrarium, errors.New("auth not found")
 	}
 
-	row, err_r := statement.Query() // Execute SQL Statements
-	if err_r != nil {
-		log.Fatal((err_r.Error()))
+	terrariumsCollection := db.Collection(_TERRARIUMS_COLLECTION)
+	element := terrariumsCollection.FindOne(ctx, filter)
+
+	if err := element.Decode(&terrarium); err != nil {
+		return terrarium, errors.New("auth not found")
+	}
+	return terrarium, nil
+}
+
+func saveUnauthAttempt(db *mongo.Database, ctx context.Context, request terrariumCredentials) error {
+	unauthTerrariums := db.Collection(_TERRARIUMS_COLLECTION)
+
+	for index, _ := range request.Sensors {
+		request.Sensors[index].ID = primitive.NewObjectID()
 	}
 
-	for row.Next() {
-
-		var t_terr terrariumData
-
-		row.Scan(&t_terr.TerrariumID, &t_terr.TypeOfTerrarium, &t_terr.TerrariumAlias)
-
-		t_sensors_query := `
-		SELECT sensors.sensorID, sensors.typeOfMeasure, sensors.extra_data from sensors 
-		INNER JOIN terrariumsSensors ON sensors.sensorID = terrariumsSensors.sensorID
-		WHERE terrariumID = ?
-		;`
-
-		statement, err := db.Prepare(t_sensors_query) // Prepare SQL Statement
-		if err != nil {
-			log.Fatal(err.Error())
-		}
-		row_j, err_r := statement.Query(t_terr.TerrariumID) // Execute SQL Statements
-		if err_r != nil {
-			log.Fatal((err_r.Error()))
-		}
-
-		var t_sensors []sensorData
-
-		for row_j.Next() {
-			var t_sensor sensorData
-
-			row_j.Scan(&t_sensor.SensorID, &t_sensor.TypeOfMeasure, &t_sensor.Extra_data)
-
-			t_sensors = append(t_sensors, t_sensor)
-		}
-
-		t_terr.SensorsIds = t_sensors
-		t_terrariums = append(t_terrariums, t_terr)
-
+	terrarium := terrariumData{
+		MACAddres:       request.MACAddres,
+		MagicKey:        request.MagicKey,
+		TerrariumAlias:  request.TerrariumAlias,
+		TypeOfTerrarium: request.TypeOfTerrarium,
+		AuthState:       false,
+		Sensors:         request.Sensors,
 	}
 
-	return t_terrariums
+	_, err := unauthTerrariums.InsertOne(ctx, terrarium)
+	return err
 }

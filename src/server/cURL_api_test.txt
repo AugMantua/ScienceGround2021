@@ -1,31 +1,59 @@
+AUTH REQUEST
+
+curl --location --request POST '127.0.0.1:8080/devices/auth' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+        "MACAddres": "00:1B:44:11:3A:B7",
+        "MagicKey": "InmfNpOwCSJJhXbUnptbK5c9tdGb4CnDdPrx9WWSlu9FNELGKMfpCpAifJSpbMSHMxgN7IxKmyFlFmnF6dhF3dr3h4vnVGAze9Cpqf1z3dpIY5U37jbpmZqhNv09AaxK6WqIc3CqgYQRs7ROGWuTzBZ9vX2AVoATX0Nz0hixb9iuxUfCTRE8BqDmyhknYGWTGKubF2HuMcAsytgyL47pNiFMPcSMksBUm1hmA5EMSjSq91cjz3w2sJPldAezdZBV",
+        "TypeOfTerrarium": "Terrain",
+        "TerrariumAlias": "API_TEST_TERRARIUM",
+        "Sensors": [
+            {
+            "Name": "Temp sensor 1",
+            "TypeOfMeasure": "Temperature_1",
+            "Extra_data": "°C"
+            },
+            {
+            "Name": "Temp sensor 2",
+            "TypeOfMeasure": "Temperature_2",
+            "Extra_data": "°C"
+            },
+            {
+            "Name": "Hum sensor 1",
+            "TypeOfMeasure": "Humidity_1",
+            "Extra_data": "%"
+            }
+        ]
+    }
+'
 
 ADD Measure
 
-curl --location --request GET '127.0.0.1:8080/data/measures/add' \
+curl --location --request POST '127.0.0.1:8080/data/measures/add' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "Data" : 
     [
         {
-            "TerrariumID": "Terrain_1",
-            "SensorID": "Termo_1",
+            "TerrariumID": "611f737c143452662ecbe342",
+            "SensorName": "Temp sensor 1",
             "Value": "21.5",
             "Timestamp": "2010-12-30 12:10:04.100"
         },
         {
-            "TerrariumID": "Terrain_1",
-            "SensorID": "Termo_2",
+            "TerrariumID": "611f737c143452662ecbe342",
+            "SensorName": "Temp sensor 2",
             "Value": "22.5",
             "Timestamp": "2010-12-30 12:10:04.100"
         },
         {
-            "TerrariumID": "Terrain_1",
-            "SensorID": "Humidity_1",
+            "TerrariumID": "611f737c143452662ecbe342",
+            "SensorName": "Hum sensor 1",
             "Value": "75",
             "Timestamp": "2010-12-30 12:10:04.100"
         }
     ]
- }
+}
 '
 
 REQUEST Measures
@@ -33,10 +61,10 @@ REQUEST Measures
 curl --location --request GET '127.0.0.1:8080/data/measures/get' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-    "TerrariumID": "Terrain_1",
+    "TerrariumID": "611f737c143452662ecbe342",
     "From": "2010-12-29",
     "To": "2011-01-01",
-    "SensorID": "-"
+    "SensorID": ""
  }
 '
 
@@ -44,3 +72,25 @@ REQUEST Terrariums
 
 curl --location --request GET '127.0.0.1:8080/data/terrariums/get'
 
+STATUS 
+
+curl --location --request GET '127.0.0.1:8080/status'    
+
+START Session
+
+curl --location --request POST '127.0.0.1:8080/data/terrariums/sessions/start' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "TerrariumID": "611f737c143452662ecbe342"
+}
+'
+
+STOP Session
+
+curl --location --request POST '127.0.0.1:8080/data/terrariums/sessions/stop' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "TerrariumID": "611f737c143452662ecbe342",
+    "SessionKey":"6122116bfad6b6770605a719"
+}
+'
