@@ -47,6 +47,11 @@ func main() {
 		terrariums := data.Group("/terrariums")
 		{
 			terrariums.GET("/get", RequestTerrariumsList)
+			sessions := terrariums.Group("/sessions")
+			{
+				sessions.POST("/start", StartSession)
+				sessions.POST("/stop", StopSession)
+			}
 		}
 	}
 

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"time"
 
@@ -25,7 +26,7 @@ type terrariumData struct {
 	TerrariumAlias  string                `bson:"terrariumAlias,omitempty"`
 	Sensors         []sensorData          `bson:"sensorsIds,omitempty"`
 	Status          string                `bson:"status,omitempty"`
-	Sessions        primitive.ObjectID    `bson:"sessions,omitempty"`
+	Sessions        []sessionData         `bson:"sessions,omitempty"`
 	MACAddres       string                `bson:"macAddress,omitempty"`
 	MagicKey        string                `bson:"magicKey,omitempty"`
 	AuthState       bool                  `bson:"authState"`
@@ -38,16 +39,15 @@ type terrariumGet struct {
 	TerrariumAlias  string             `bson:"terrariumAlias,omitempty"`
 	Sensors         []sensorData       `bson:"sensorsIds,omitempty"`
 	Status          string             `bson:"status,omitempty"`
-	Sessions        primitive.ObjectID `bson:"sessions,omitempty"`
+	Sessions        []sessionData      `bson:"sessions,omitempty"`
 	AuthState       bool               `bson:"authState"`
 }
 
-type terrariumsSession struct {
-	ID             primitive.ObjectID `bson:"_id,omitempty"`
-	TerrariumID    primitive.ObjectID `bson:"terrariumId,omitempty"`
-	SessionKey     string             `bson:"sessionKey,omitempty"`
+type sessionData struct {
+	SessionKey     primitive.ObjectID `bson:"sessionKey"`
 	TimestampStart string             `bson:"timestampStart,omitempty"`
 	TimestampEnd   string             `bson:"timestampEnd,omitempty"`
+	IsAlive        bool               `bson:"isAlive"`
 }
 
 type single_measure_data struct {
@@ -55,7 +55,7 @@ type single_measure_data struct {
 	SensorName string             `bson:"sensorId,omitempty"`
 	Value      string             `bson:"value,omitempty"`
 	Timestamp  string             `bson:"timestamp,omitempty"`
-	SessionKey string             `bson:"sessionKey,omitempty"`
+	SessionKey primitive.ObjectID `bson:"sessionKey,omitempty"`
 }
 
 type push_measure_request_typ struct {
@@ -108,9 +108,22 @@ func insertMeasure(db *mongo.Database, ctx context.Context, measure push_measure
 		return errors.New("can't find requested sensor")
 	}
 
+	if measure.SessionKey != "" {
+		sessionKey, _ := primitive.ObjectIDFromHex(measure.SessionKey)
+		presence = false
+		for _, session := range terrarium.Sessions {
+			if session.SessionKey == sessionKey {
+				presence = true
+			}
+		}
+		if !presence {
+			return errors.New("can't find requested session")
+		}
+		singleMeasure.SessionKey = sessionKey
+	}
+
 	singleMeasure.ID = primitive.NewObjectIDFromTimestamp(time.Now())
 	singleMeasure.SensorName = measure.SensorName
-	singleMeasure.SessionKey = measure.SessionKey
 	singleMeasure.Timestamp = measure.Timestamp
 	singleMeasure.Value = measure.Value
 
@@ -140,65 +153,87 @@ func dataDBinit(dbPath string) (*mongo.Database, context.Context) {
 }
 
 /*Extract measures*/
-func getMeasures(db *mongo.Database, request measures_request_typ, ctx context.Context) []single_measure_data {
-	var measures []single_measure_data
+func getMeasures(db *mongo.Database, request measures_request_typ, ctx context.Context) ([]single_measure_data, error) {
+	var tempTerrarium terrariumData
 	var filter = bson.M{}
 
 	if request.SensorID != "" {
-		filter["sensorId"] = request.SensorID
+		filter["measures.sensorId"] = request.SensorID
 	}
 	if request.From != "" && request.To != "" {
-		filter["timestamp"] = bson.M{"$gt": request.From, "$lt": request.To}
+		filter["measures.timestamp"] = bson.M{"$gt": request.From, "$lt": request.To}
 	}
 
 	if request.TerrariumID != "" {
-		filter["terrariumId"] = request.TerrariumID
+		id, e := primitive.ObjectIDFromHex(request.TerrariumID)
+		if e != nil {
+			return tempTerrarium.Measures, errors.New("validation error, terraiumID")
+		}
+		filter["_id"] = id
+	} else {
+		return tempTerrarium.Measures, errors.New("validation error, terraiumID is needed")
 	}
 
-	measuresCollection := db.Collection("measures")
-	cursor, err := measuresCollection.Find(ctx, filter)
+	if request.SessionKey != "" {
+		idSession, _ := primitive.ObjectIDFromHex(request.SessionKey)
+		filter["measures.sessionKey"] = idSession
+	}
+
+	measuresCollection := db.Collection(_TERRARIUMS_COLLECTION)
+	err := measuresCollection.FindOne(ctx, filter).Decode(&tempTerrarium)
 	if err != nil {
-		panic(err)
+		return tempTerrarium.Measures, err
 	}
-	if err = cursor.All(ctx, &measures); err != nil {
-		panic(err)
-	}
-	return measures
+	return tempTerrarium.Measures, nil
 }
 
-func createSessionRow(db *mongo.Database, SessionKey string, terrariumID string, timestampStart string) string {
-	/*
-		log.Println("Inserting session record")
-		createSessionSQL := `INSERT INTO terrariumsLiveSession(terrariumID, SessionKey, timestampStart) VALUES (?,?, ?)`
-		statement, err := db.Prepare(createSessionSQL) // Prepare statement.
-		// This is good to avoid SQL injections
-		if err != nil {
-			log.Fatalln(err.Error())
-		}
-		_, err = statement.Exec(terrariumID, SessionKey, timestampStart)
-		if err != nil {
-			log.Fatalln(err.Error())
-			return "err"
-		}
-	*/
-	return SessionKey
+func createSession(db *mongo.Database, ctx context.Context, terrariumID string) (string, error) {
+	var session sessionData
+
+	session.SessionKey = primitive.NewObjectIDFromTimestamp(time.Now())
+	session.IsAlive = true
+	var t = time.Now()
+	session.TimestampStart = fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
+
+	update := bson.M{"$push": bson.M{"sessions": session}}
+
+	id, err := primitive.ObjectIDFromHex(terrariumID)
+
+	if err != nil {
+		return "", errors.New("can't cast request terrariumID to objectID")
+	}
+	_, err = db.Collection(_TERRARIUMS_COLLECTION).UpdateByID(ctx, id, update)
+	if err != nil {
+		return "", err
+	}
+
+	return session.SessionKey.Hex(), nil
 }
 
-func stopSession(db *mongo.Database, SessionKey string, terrariumID string, timestampEnd string) bool {
-	/*log.Println("Inserting session record")
-	endSessionSQL := `UPDATE terrariumsLiveSession timestampEnd	= ? WHERE SessionKey = ? AND terrariumID = ? `
-	statement, err := db.Prepare(endSessionSQL) // Prepare statement.
-	// This is good to avoid SQL injections
-	if err != nil {
-		log.Fatalln(err.Error())
+func stopSession(db *mongo.Database, ctx context.Context, SessionKey string, terrariumID string) error {
+	var err error
+
+	terrariumId, _ := primitive.ObjectIDFromHex(terrariumID)
+	sessionId, _ := primitive.ObjectIDFromHex(SessionKey)
+
+	if terrariumId == primitive.NilObjectID ||
+		sessionId == primitive.NilObjectID {
+		return errors.New("terrarium - sessionKey mismatch")
 	}
-	_, err = statement.Exec(timestampEnd, SessionKey, terrariumID)
-	if err != nil {
-		log.Fatalln(err.Error())
-		return false
+
+	var query = bson.M{}
+	query["_id"] = terrariumId
+	query["sessions.sessionKey"] = sessionId
+
+	update := bson.M{
+		"$set": bson.M{
+			"sessions.$.isAlive": false,
+		},
 	}
-	*/
-	return true
+
+	_, err = db.Collection(_TERRARIUMS_COLLECTION).UpdateMany(ctx, query, update)
+
+	return err
 }
 
 func getTerrariums(db *mongo.Database, ctx context.Context) []terrariumGet {

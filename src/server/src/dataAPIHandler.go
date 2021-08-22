@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,10 +9,8 @@ import (
 	"log"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang/gddo/httputil/header"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -75,6 +72,7 @@ type measures_request_typ struct {
 	From        string
 	To          string
 	SensorID    string //If not set -> all
+	SessionKey  string
 }
 
 func AddMeasure(c *gin.Context) {
@@ -104,7 +102,13 @@ func RequestMeasures(c *gin.Context) {
 		c.JSON(http.StatusUnprocessableEntity, "Invalid json provided")
 		return
 	}
-	measures := getMeasures(dbConnection, request, ctx)
+	measures, err := getMeasures(dbConnection, request, ctx)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
 	c.JSON(200, gin.H{
 		"data": measures,
 	})
@@ -117,71 +121,55 @@ func Status(c *gin.Context) {
 	})
 }
 
-func StartSession(db *mongo.Database) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("Content-Type") != "" {
-			value, _ := header.ParseValueAndParams(r.Header, "Content-Type")
-			if value != "application/json" {
-				msg := "Content-Type header is not application/json"
-				http.Error(w, msg, http.StatusUnsupportedMediaType)
-				return
-			}
-		}
-		var request terrariumsSession
-		/*Decode json content*/
-		jsonDecodeToStruct(&request, w, r)
-
-		var t = time.Now()
-		var timestamp = fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
-
-		const alphanum = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-		var bytes = make([]byte, 32)
-		rand.Read(bytes)
-		for i, b := range bytes {
-			bytes[i] = alphanum[b%byte(len(alphanum))]
-		}
-
-		var newSK = string(bytes)
-
-		/*Extract data and send back*/
-		var ris = createSessionRow(db, newSK, request.TerrariumID.String(), timestamp)
-		/*Encode to json*/
-		message, err := json.Marshal(ris)
-		if err != nil {
-			http.Error(w, "", http.StatusInternalServerError)
-			log.Fatal(err.Error())
-		}
-		w.Write(message)
-	}
+type startSessionRequest struct {
+	TerrariumID string
 }
 
-func StopSession(db *mongo.Database) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("Content-Type") != "" {
-			value, _ := header.ParseValueAndParams(r.Header, "Content-Type")
-			if value != "application/json" {
-				msg := "Content-Type header is not application/json"
-				http.Error(w, msg, http.StatusUnsupportedMediaType)
-				return
-			}
-		}
-		var request terrariumsSession
-		/*Decode json content*/
-		jsonDecodeToStruct(&request, w, r)
+func StartSession(c *gin.Context) {
+	dbConnection := c.MustGet("databaseConn").(*mongo.Database)
+	ctx := c.MustGet("databaseCtx").(context.Context)
 
-		var t = time.Now()
-		var timestamp = fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
-
-		/*Extract data and send back*/
-		var ris = stopSession(db, request.SessionKey, string(request.TerrariumID.String()), timestamp)
-		/*Encode to json*/
-		message, err := json.Marshal(ris)
-		if err != nil {
-			http.Error(w, "", http.StatusInternalServerError)
-			log.Fatal(err.Error())
-		}
-		w.Write(message)
+	var sessionRequest startSessionRequest
+	if err := c.ShouldBindJSON(&sessionRequest); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, "Invalid json provided")
+		return
 	}
+
+	sessionKey, err := createSession(dbConnection, ctx, sessionRequest.TerrariumID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, err)
+		return
+	}
+	c.JSON(200, gin.H{
+		"SessionKey": sessionKey,
+	})
+}
+
+type stopSessionRequest struct {
+	TerrariumID string
+	SessionKey  string
+}
+
+func StopSession(c *gin.Context) {
+	dbConnection := c.MustGet("databaseConn").(*mongo.Database)
+	ctx := c.MustGet("databaseCtx").(context.Context)
+
+	var req stopSessionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, "Invalid json provided")
+		return
+	}
+
+	if err := stopSession(dbConnection, ctx, req.SessionKey, req.TerrariumID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err,
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"done": true,
+	})
 }
 
 func RequestTerrariumsList(c *gin.Context) {

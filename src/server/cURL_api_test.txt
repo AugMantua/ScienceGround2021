@@ -61,7 +61,7 @@ REQUEST Measures
 curl --location --request GET '127.0.0.1:8080/data/measures/get' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-    "TerrariumID": "",
+    "TerrariumID": "611f737c143452662ecbe342",
     "From": "2010-12-29",
     "To": "2011-01-01",
     "SensorID": ""
@@ -76,3 +76,21 @@ STATUS
 
 curl --location --request GET '127.0.0.1:8080/status'    
 
+START Session
+
+curl --location --request POST '127.0.0.1:8080/data/terrariums/sessions/start' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "TerrariumID": "611f737c143452662ecbe342"
+}
+'
+
+STOP Session
+
+curl --location --request POST '127.0.0.1:8080/data/terrariums/sessions/stop' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "TerrariumID": "611f737c143452662ecbe342",
+    "SessionKey":"6122116bfad6b6770605a719"
+}
+'
