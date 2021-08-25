@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -62,8 +63,7 @@ func main() {
 
 	router.GET("/status", Status)
 
-	//mux.HandleFunc("/data/session/start", StartSession(MongoDB))
-	//mux.HandleFunc("/data/session/stop", StopSession(MongoDB))
+	router.Use(cors.Default())
 
 	router.Run(":8080")
 

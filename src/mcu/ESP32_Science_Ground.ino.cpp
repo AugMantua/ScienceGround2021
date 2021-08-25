@@ -1,10 +1,8 @@
 /*
    There are three serial ports on the ESP known as U0UXD, U1UXD and U2UXD.
-
    U0UXD is used to communicate with the ESP32 for programming and during reset/boot.
    U1UXD is unused and can be used for your projects. Some boards use this port for SPI Flash access though
    U2UXD is unused and can be used for your projects.
-
 */
 #include <WiFi.h>
 #include <math.h>
@@ -17,15 +15,19 @@
 WiFiClient client;
 HTTPClient http;
 
+byte mac[6];
+
 const char* ntpServer = "pool.ntp.org";
 const long  gmtOffset_sec = 0;
 const int   daylightOffset_sec = 3600;
 
 String orario;
 String postMessage;
+String terrariumID;
 
 enum stato {
   INIT,
+  API_AUTH,
   MEASURING_SHT_20,
   REQUEST_MH_Z19B,
   RECEIVING_MH_Z19B,
@@ -46,8 +48,9 @@ const unsigned long HTTP_TIMEOUT = 10000;  // max response time from server
 char response[800]; // this fixed sized buffers works well for this project using the NodeMCU.
 
 int stato_macchina = INIT;
-const char* ssid     = "JamiroOspite";
-const char* password = "ciaociao";
+int auth_state = 0;
+const char* ssid     = "Pie";
+const char* password = "prova123";
 
 #define RXD2 16
 #define TXD2 17
@@ -93,9 +96,11 @@ float dew_pointC;
 float RH;
 int CO2;
 
-const char* server = "lucacarre2400.ddns.net";  // server's address
+//const char* server = "lucacarre2400.ddns.net";  // server's address
+const char* server = "192.168.22.90";  // server's address
 const int serverPort = 8080;                    // server port
 const char* resource = "/data/measures/add";    // resource requested
+const char* login = "/devices/auth";            // auth API
 //const char* resource = "/data/terrariums/get";    // resource requested
 
 int i = 0;
@@ -108,6 +113,7 @@ bool standby = false;
 
 void sendCmdToMhz19(char *);
 char getCheckSum(char *);
+bool tryAuth(String*,int *);
 
 void setup() {
   Serial.begin(115200);                         // Seriale standard per la comunicazione di debug
@@ -118,7 +124,7 @@ void setup() {
 
   byte buf[BL] = CMD_ABC_OFF;                   // We are setting Automatic Baseline Correction to OFF
   sendCmdToMhz19(buf);
-  cmdSent = false;                              // ready to process new commands on MH-Z19B (to be changed, absorbed by state machine)
+  cmdSent = false;                              // ready to process new commands on MH-Z19B (to be changed, absorbed by state machine) 
 }
 
 void loop() { //Choose Serial1 or Serial2 as required
@@ -127,8 +133,16 @@ void loop() { //Choose Serial1 or Serial2 as required
       {
         Serial.println("STATUS: INIT");
       }
-      stato_macchina = MEASURING_SHT_20;
+      stato_macchina = API_AUTH;
       break;
+
+    case (API_AUTH): // Try login to server before start loop
+    {
+     if(tryAuth(&terrariumID,&auth_state)){
+      stato_macchina = MEASURING_SHT_20; 
+     }
+      break;
+    }
 
     case (MEASURING_SHT_20):                    // Status used for collecting measurements from SHT20
       {
@@ -512,4 +526,173 @@ bool skipResponseHeaders() {
     stato_macchina = ERRORE;
   }
   return ok;
+}
+
+/* Try to authenticate to service
+ * On success receives terrarium ID
+ */
+
+#define AUTH_CONNECT 0
+#define CREATE_REQUEST 1
+#define SEND_LOGIN_REQ 2
+#define WAIT_RESPONSE 3
+#define CHECK_RESPONSE 4
+#define DISCONNECT 5
+#define _ERROR 255
+#define AUTH_STANDBY 6
+#define AUTH_CLOSE 7
+
+#define _TYPE_OF_TERRARIUM "Terrain"
+#define _TERRARIUM_ALIAS "ScienceGround2021_Test"
+#define _MAGIC_KEY "InmfNpOwCSJJhXbUnptbK5c9tdGb4CnDdPrx9WWSlu9FNELGKMfpCpAifJSpbMSHMxgN7IxKmyFlFmnF6dhF3dr3h4vnVGAze9Cpqf1z3dpIY5U37jbpmZqhNv09AaxK6WqIc3CqgYQRs7ROGWuTzBZ9vX2AVoATX0Nz0hixb9iuxUfCTRE8BqDmyhknYGWTGKubF2HuMcAsytgyL47pNiFMPcSMksBUm1hmA5EMSjSq91cjz3w2sJPldAezdZBV"
+
+#define TRY_BACK_TIME 300 // 5 minutes
+
+bool tryAuth(String* _terrariumId, int* auth_step){
+
+  switch(*auth_step){
+
+    case AUTH_CONNECT: // start connecion
+    {
+      Serial.println("STATUS: WIFI_CONNECTING");
+      WiFi.begin(ssid, password);
+      int counter = 0;
+      Serial.print("Connecting to ");
+      Serial.print(ssid);
+      while (WiFi.status() != WL_CONNECTED) {
+        delay(500);
+        Serial.print(".");
+      }
+      Serial.println("");
+      WiFi.macAddress(mac);
+      *auth_step = CREATE_REQUEST;
+      return false;
+      break;
+    }
+
+    case CREATE_REQUEST:
+    {
+      Serial.println("STATUS: CREATE_REQUEST");
+      StaticJsonDocument<768> doc;
+
+      doc["MACAddres"] = mac;
+      doc["MagicKey"] = _MAGIC_KEY;
+      doc["TypeOfTerrarium"] = _TYPE_OF_TERRARIUM;
+      doc["TerrariumAlias"] = _TERRARIUM_ALIAS;
+    
+      JsonArray Sensors = doc.createNestedArray();
+      
+      JsonObject Data_Temp = Sensors.createNestedObject();
+      Data_Temp["Name"] = "Internal temperature sensor";
+      Data_Temp["TypeOfMeasure"] = "Temperature_1";
+      Data_Temp["Extra_data"] = "°C";
+    
+      JsonObject Data_Rugiada = Sensors.createNestedObject();
+      Data_Rugiada["Name"] = "Punto Rugiada";
+      Data_Rugiada["TypeOfMeasure"] = "PuntoRugiada_1";
+      Data_Rugiada["Extra_data"] = "";
+    
+      JsonObject Data_Umid = Sensors.createNestedObject();
+      Data_Umid["Name"] = "Umid";
+      Data_Umid["TypeOfMeasure"] = "Umid_1";
+      Data_Umid["Extra_data"] = "%";
+    
+      JsonObject Data_VPD = Sensors.createNestedObject();
+      Data_VPD["Name"] = "VPD";
+      Data_VPD["TypeOfMeasure"] = "VPD_1";
+      Data_VPD["Extra_data"] = "%";
+    
+      JsonObject Data_CO2 = Sensors.createNestedObject();
+      Data_CO2["Name"] = "CO2";
+      Data_CO2["TypeOfMeasure"] = "CO2_1";
+      Data_CO2["Extra_data"] = "ppm";
+
+      serializeJson(doc, postMessage);
+      serializeJson(doc, Serial);
+
+      *auth_step = SEND_LOGIN_REQ;
+      return false;
+      break;
+    }
+
+    case SEND_LOGIN_REQ:
+    {
+
+      Serial.println("STATUS: SEND_LOGIN_REQ");
+      if (WiFi.status() == WL_CONNECTED) { //Check WiFi connection status
+        String URI = (String)"http://" + (String)server + (String)":" + (String)serverPort + (String)login;
+        Serial.println("Connecting to " + URI);
+        http.begin(URI); //Specify destination for HTTP request
+        http.addHeader("Content-Type", "application/json");
+        int httpCode = http.POST(postMessage);
+        if (httpCode > 0) { //Check for the returning code
+          String payload = http.getString();
+          Serial.println(httpCode);
+          Serial.println(payload);
+          *auth_step = WAIT_RESPONSE;
+        }
+        else {
+          Serial.println("Error on HTTP request");
+          Serial.println(httpCode);
+          *auth_step = _ERROR;
+        }
+      } else {
+        Serial.println("Lost connection");
+        *auth_step = _ERROR;
+      }
+      return false;
+      break;
+    }
+
+    case _ERROR:
+    {
+      if (WiFi.status() == WL_CONNECTED){
+        WiFi.disconnect();
+      }
+      Serial.println("Error, try again");
+      *auth_step = AUTH_CONNECT;
+      delay(TRY_BACK_TIME*1000);
+      break;
+    }
+
+    case (WAIT_RESPONSE):               // Status used when waiting for a response from the server that collects measurements
+      {
+        Serial.println("STATUS: WAITING_RESPONSE");
+        skipResponseHeaders();
+        *auth_step = RESPONSE_OK;
+
+      }
+      return false;
+      break;
+
+    case (CHECK_RESPONSE):               // Status used when response received from the server that collects measurements is OK
+      {
+        Serial.println("STATUS: RESPONSE_OK");
+        Serial.println(response);
+        if (!client.connected()) {
+          Serial.println();
+          Serial.println("disconnecting http client...");
+          client.stop();
+        }
+        StaticJsonDocument<200> doc;
+        deserializeJson(doc, response);
+        const char* id = doc["data"];
+        *_terrariumId = id;
+        Serial.println(*_terrariumId);
+        *auth_step = AUTH_CLOSE;
+      }
+      return false;
+      break;
+
+    case (AUTH_CLOSE):                     // Status used when disconnecting from the Wi-Fi network
+      {
+        Serial.println("STATUS: WIFI_DISCONNECT");
+        if (WiFi.status() == WL_CONNECTED){
+          WiFi.disconnect();
+        }
+        return true;
+      }
+      break;
+  }
+  
 }
