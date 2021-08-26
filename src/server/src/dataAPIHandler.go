@@ -97,8 +97,9 @@ func RequestMeasures(c *gin.Context) {
 	dbConnection := c.MustGet("databaseConn").(*mongo.Database)
 	ctx := c.MustGet("databaseCtx").(context.Context)
 	var request measures_request_typ
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusUnprocessableEntity, "Invalid json provided")
+
+	if err := c.ShouldBind(&request); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, "Invalid query provided")
 		return
 	}
 	measures, err := getMeasures(dbConnection, request, ctx)
