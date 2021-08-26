@@ -63,7 +63,7 @@ export default {
         TerrariumId: self.terrariumId,
         From: from,
         To: to,
-        SensorId: self.sensorDatas.SensorID,
+        SensorId: self.sensorDatas.ID,
       };
 
       Vue.axios

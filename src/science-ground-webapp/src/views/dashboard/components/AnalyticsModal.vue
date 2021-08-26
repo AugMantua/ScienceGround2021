@@ -23,11 +23,11 @@
             <v-container>
               
               <v-tabs v-model="tabs" center-active>
-                <v-tab v-for="item in terrariumSensors" :key="item.SensorID">{{item.TypeOfMeasure}}</v-tab>      
+                <v-tab v-for="item in terrariumSensors" :key="item.ID">{{item.TypeOfMeasure}}</v-tab>      
               </v-tabs>
 
               <v-tabs-items v-model="tabs">
-                <v-tab-item v-for="item in terrariumSensors" :key="item.SensorID" :eager="true">
+                <v-tab-item v-for="item in terrariumSensors" :key="item.ID" :eager="true">
                   <sensorchart v-bind:terrariumId="terrariumId" v-bind:sensorDatas="item"/>
                 </v-tab-item>
               </v-tabs-items>
