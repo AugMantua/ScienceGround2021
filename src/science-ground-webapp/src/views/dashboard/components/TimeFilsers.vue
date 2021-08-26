@@ -187,17 +187,19 @@ export default {
     }
   },
   mounted() {
-    setTimeout ( () =>{
-    this.changeFilter();
-    }, 5000);
+    let self = this;
     this.dateFrom = moment(this.dateFrom, "YYYY-MM-DD").subtract(3, 'months').format("YYYY-MM-DD");
+   
+    EventBus.$on("changeDiaalogState", (value) => {
+      self.changeFilter();
+    });
   },
   methods: {
     changeFilter() {
       EventBus.$emit("updateChart", {
-          to: moment(this.dateTo + " " + this.timeTo, "YYYY-MM-DD HH:mm").format("YYYY-MM-DD HH:mm"),
-          from: moment(this.dateFrom + " " + this.timeFrom, "YYYY-MM-DD HH:mm").format("YYYY-MM-DD HH:mm"),
-        });
+        to: moment(this.dateTo + " " + this.timeTo, "YYYY-MM-DD HH:mm").format("YYYY-MM-DD HH:mm"),
+        from: moment(this.dateFrom + " " + this.timeFrom, "YYYY-MM-DD HH:mm").format("YYYY-MM-DD HH:mm"),
+      });
     }
   }
 };

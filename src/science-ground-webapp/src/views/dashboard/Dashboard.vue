@@ -6,13 +6,13 @@
       style="margin-left: auto; margin-right: auto"
       :class="!$vuetify.breakpoint.smAndDown ? 'mobileResize' : ''"
     >
-      <v-container v-if="!finishLoading" class="d-flex justify-center mt-10">
+      <v-container v-if="!finishLoading" class="d-flex justify-center mt-7">
         <v-progress-circular indeterminate color="primary" />
       </v-container>
 
       <v-layout row v-if="finishLoading">
         <v-flex class="d-flex flex-row" v-for="item in items" :key="item.ID">
-          <terrarium class="mr-3 ml-3" v-bind:terrariumName="item.TerrariumAlias" v-bind:terrariumId="item.ID" v-bind:terrariumSensors="item.Sensors"/>
+          <terrarium v-bind:terrariumName="item.TerrariumAlias" v-bind:terrariumId="item.ID" v-bind:terrariumSensors="item.Sensors" v-bind:TypeOfTerrarium="item.TypeOfTerrarium"/>
         </v-flex>
       </v-layout>
     </div>
@@ -53,4 +53,5 @@ export default {
 <style lang="sass" scoped>
 .mobileResize
   width: 70%
+
 </style>

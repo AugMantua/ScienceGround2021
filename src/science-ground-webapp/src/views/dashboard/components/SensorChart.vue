@@ -59,15 +59,9 @@ export default {
     getTerrariunDatas(from, to) {
       let self = this;
       self.loading = true;
-      let data = {
-        TerrariumId: self.terrariumId,
-        From: from,
-        To: to,
-        SensorId: self.sensorDatas.ID,
-      };
 
       Vue.axios
-        .post("/data/measures/get", data)
+        .get("/data/measures/get?TerrariumID=" + self.terrariumId + "&From="+ from +"&To=" + to + "&SensorID=" + self.sensorDatas.ID)
         .then((res) => {
           console.log(res);
 

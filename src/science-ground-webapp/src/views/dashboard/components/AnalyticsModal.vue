@@ -68,7 +68,7 @@ export default {
 
   mounted() {
     let self = this;
-
+    EventBus.$emit("updateChart");
     EventBus.$on("changeDiaalogState", (value) => {
       self.isOpen = value.visibility;
       self.terrariumName = value.terrariumName;
