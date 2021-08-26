@@ -5,9 +5,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	cors "github.com/rs/cors/wrapper/gin"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -24,6 +24,8 @@ func DBApiMiddleware(db *mongo.Database, ctx context.Context) gin.HandlerFunc {
 
 func main() {
 
+	router.Use(cors.Default())
+
 	// load .env file
 	err := godotenv.Load(".env")
 	if err != nil { // we're not in production
@@ -31,6 +33,8 @@ func main() {
 		if err != nil {
 			log.Fatalf("Error loading .env file")
 		}
+	} else {
+		gin.SetMode(gin.ReleaseMode)
 	}
 
 	mongo_connection, context := dataDBinit(os.Getenv("MONGODB"))
@@ -62,8 +66,6 @@ func main() {
 	}
 
 	router.GET("/status", Status)
-
-	router.Use(cors.Default())
 
 	router.Run(":8080")
 
