@@ -24,7 +24,7 @@ func DBApiMiddleware(db *mongo.Database, ctx context.Context) gin.HandlerFunc {
 
 func main() {
 
-	router.Use(cors.Default())
+	router.Use(cors.AllowAll())
 
 	// load .env file
 	err := godotenv.Load(".env")
