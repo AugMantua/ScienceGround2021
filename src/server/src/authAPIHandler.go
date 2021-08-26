@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -22,7 +23,12 @@ func AuthRequest(c *gin.Context) {
 			"message": "Forbidden",
 		})
 		// Store request in order to allow abilitation
-		saveUnauthAttempt(dbConnection, ctx, request)
+		log.Println("Terrarium not found, adding to requests")
+		err = saveUnauthAttempt(dbConnection, ctx, request)
+		if err != nil {
+			log.Println("Error creating request")
+			log.Println(err.Error())
+		}
 		return
 	}
 	c.JSON(200, gin.H{
