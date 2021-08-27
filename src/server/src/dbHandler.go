@@ -32,6 +32,7 @@ type terrariumData struct {
 	AuthState       bool                  `bson:"authState"`
 	Measures        []single_measure_data `bson:"measures,omitempty"`
 	LastUpdate      []single_measure_data `bson:"lastUpdate,omitempty"`
+	UpdateOn        string                `bson:"updateOn,omitempty"`
 }
 
 type terrariumGet struct {
@@ -104,7 +105,7 @@ func insertMeasures(db *mongo.Database, ctx context.Context, measures []push_mea
 		var presence bool
 		presence = false
 		for _, sensor := range terrarium.Sensors {
-			if sensor.Name == measure.SensorName {
+			if sensor.ID.Hex() == measure.SensorName {
 				presence = true
 			}
 		}
@@ -149,6 +150,9 @@ func insertMeasures(db *mongo.Database, ctx context.Context, measures []push_mea
 	if err != nil {
 		return err
 	}
+
+	// Update UpdatedOn
+	_, err = db.Collection(_TERRARIUMS_COLLECTION).UpdateByID(ctx, id, bson.M{"$set": bson.M{"updatedOn": time.Now().Format(time.RFC3339)}})
 	return nil
 }
 

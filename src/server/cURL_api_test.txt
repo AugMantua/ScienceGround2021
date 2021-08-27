@@ -58,15 +58,7 @@ curl --location --request POST '127.0.0.1:8080/data/measures/add' \
 
 REQUEST Measures
 
-curl --location --request GET '127.0.0.1:8080/data/measures/get' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "TerrariumID": "611f737c143452662ecbe342",
-    "From": "2010-12-29",
-    "To": "2011-01-01",
-    "SensorID": ""
- }
-'
+curl --location --request GET 'http://localhost:8080/data/measures/get?TerrariumID=611f737c143452662ecbe342&From=2010-01-29&To=2011-01-01&SensorID&SessionKey=6122116bfad6b6770605a719&LastUpdateOnly=false'
 
 REQUEST Terrariums
 
