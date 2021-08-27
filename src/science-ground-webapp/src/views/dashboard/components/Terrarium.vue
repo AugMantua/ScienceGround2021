@@ -40,7 +40,7 @@ export default {
   methods: {
     changeModalVisibility() {
       let self = this;
-      EventBus.$emit("changeDiaalogState", {
+      EventBus.$emit("changeDialogState", {
         visibility: true,
         terrariumName: self.terrariumName,
         terrariumId: self.terrariumId,

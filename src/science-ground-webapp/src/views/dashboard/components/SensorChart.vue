@@ -13,7 +13,7 @@
 import VueApexCharts from "vue-apexcharts";
 import Vue from "vue";
 import { EventBus } from "../../../main";
-
+import moment from 'moment';
 export default {
   name: "SensorChart",
   components: {
@@ -49,12 +49,15 @@ export default {
 
   mounted() {
     let self = this;
-
     EventBus.$on("updateChart", (value) => {
       self.getTerrariunDatas(value.from, value.to);
     });
+    self.getTerrariunDatas( moment(new Date().toISOString().substr(0, 10), "YYYY-MM-DD").subtract(3, 'months').format("YYYY-MM-DD"), new Date().toISOString().substr(0, 10)) ;
+    
   },
-
+  beforeDestroy(){
+    EventBus.$off('updateChart');
+  },
   methods: {
     getTerrariunDatas(from, to) {
       let self = this;
@@ -67,7 +70,7 @@ export default {
 
           let temp = [];
 
-          if (res.data == null) {
+          if (res.data.data == null) {
             self.series = [
               {
                 data: [],
@@ -77,7 +80,7 @@ export default {
             return;
           }
 
-          res.data.forEach((element) => {
+          res.data.data.forEach((element) => {
             temp.push({
               x: element.Timestamp,
               y: element.Value,

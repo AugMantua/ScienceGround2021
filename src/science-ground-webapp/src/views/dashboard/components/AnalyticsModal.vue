@@ -7,7 +7,7 @@
   >
     <v-card>
       <v-toolbar height="35" dark color="primary">
-        <v-btn icon dark @click="isOpen = false">
+        <v-btn icon dark @click="close()">
           <v-icon>mdi-close</v-icon>
         </v-btn>
         <v-toolbar-title class="pa-0"
@@ -68,16 +68,25 @@ export default {
 
   mounted() {
     let self = this;
-    EventBus.$emit("updateChart");
-    EventBus.$on("changeDiaalogState", (value) => {
+
+    EventBus.$on("changeDialogState", (value) => {
       self.isOpen = value.visibility;
       self.terrariumName = value.terrariumName;
       self.terrariumId = value.terrariumId;
       self.terrariumSensors = value.sensorsData;
+     
     });
   },
 
-  methods: {},
+  methods: {
+    close(){
+      this.terrariumName = "";
+      this.terrariumId = "";
+      this.terrariumSensors = [];
+      this.$forceUpdate();
+      this.isOpen = false;
+    }
+  },
 };
 </script>
 
