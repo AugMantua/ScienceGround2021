@@ -168,6 +168,9 @@ export default {
     },
 
   },
+   beforeDestroy(){
+    EventBus.$off('changeDialogState');
+  },
   watch:{
     menuDateTo(){
       if(!this.menuDateTo && !this.validDateInsert)
@@ -187,17 +190,24 @@ export default {
     }
   },
   mounted() {
-    setTimeout ( () =>{
-    this.changeFilter();
-    }, 5000);
-    this.dateFrom = moment(this.dateFrom, "YYYY-MM-DD").subtract(3, 'months').format("YYYY-MM-DD");
+    let self = this;
+
+    this.dateFrom = moment(this.dateTo, "YYYY-MM-DD").subtract(3, 'months').format("YYYY-MM-DD");
+
+    // on open reset filter
+     EventBus.$on("changeDialogState", (value) => {
+      self.dateTo = new Date().toISOString().substr(0, 10);
+      self.dateFrom = moment(this.dateTo, "YYYY-MM-DD").subtract(3, 'months').format("YYYY-MM-DD"); 
+      self.timeTo = "23:59";
+      self.timeFrom = "00:01"; 
+    });
   },
   methods: {
     changeFilter() {
       EventBus.$emit("updateChart", {
-          to: moment(this.dateTo + " " + this.timeTo, "YYYY-MM-DD HH:mm").format("YYYY-MM-DD HH:mm"),
-          from: moment(this.dateFrom + " " + this.timeFrom, "YYYY-MM-DD HH:mm").format("YYYY-MM-DD HH:mm"),
-        });
+        to: moment(this.dateTo + " " + this.timeTo, "YYYY-MM-DD HH:mm").format("YYYY-MM-DD HH:mm"),
+        from: moment(this.dateFrom + " " + this.timeFrom, "YYYY-MM-DD HH:mm").format("YYYY-MM-DD HH:mm"),
+      });
     }
   }
 };

@@ -7,7 +7,7 @@
   >
     <v-card>
       <v-toolbar height="35" dark color="primary">
-        <v-btn icon dark @click="isOpen = false">
+        <v-btn icon dark @click="close()">
           <v-icon>mdi-close</v-icon>
         </v-btn>
         <v-toolbar-title class="pa-0"
@@ -23,11 +23,11 @@
             <v-container>
               
               <v-tabs v-model="tabs" center-active>
-                <v-tab v-for="item in terrariumSensors" :key="item.SensorID">{{item.TypeOfMeasure}}</v-tab>      
+                <v-tab v-for="item in terrariumSensors" :key="item.ID">{{item.TypeOfMeasure}}</v-tab>      
               </v-tabs>
 
               <v-tabs-items v-model="tabs">
-                <v-tab-item v-for="item in terrariumSensors" :key="item.SensorID" :eager="true">
+                <v-tab-item v-for="item in terrariumSensors" :key="item.ID" :eager="true">
                   <sensorchart v-bind:terrariumId="terrariumId" v-bind:sensorDatas="item"/>
                 </v-tab-item>
               </v-tabs-items>
@@ -69,15 +69,24 @@ export default {
   mounted() {
     let self = this;
 
-    EventBus.$on("changeDiaalogState", (value) => {
+    EventBus.$on("changeDialogState", (value) => {
       self.isOpen = value.visibility;
       self.terrariumName = value.terrariumName;
       self.terrariumId = value.terrariumId;
       self.terrariumSensors = value.sensorsData;
+     
     });
   },
 
-  methods: {},
+  methods: {
+    close(){
+      this.terrariumName = "";
+      this.terrariumId = "";
+      this.terrariumSensors = [];
+      this.$forceUpdate();
+      this.isOpen = false;
+    }
+  },
 };
 </script>
 
