@@ -206,7 +206,12 @@ func getMeasures(db *mongo.Database, request measures_request_typ, ctx context.C
 		return tempTerrarium.Measures, err
 	}
 	if request.LastUpdateOnly {
-		return tempTerrarium.LastUpdate, nil
+		for _, measure := range tempTerrarium.LastUpdate {
+			if measure.SensorName == request.SensorID {
+				result = append(result, measure)
+			}
+		}
+		return result, nil
 	}
 
 	for _, measure := range tempTerrarium.Measures {
