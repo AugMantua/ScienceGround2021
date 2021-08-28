@@ -36,19 +36,19 @@ curl --location --request POST '127.0.0.1:8080/data/measures/add' \
     [
         {
             "TerrariumID": "611f737c143452662ecbe342",
-            "SensorName": "Temp sensor 1",
+            "SensorID": "Temp sensor 1",
             "Value": "21.5",
             "Timestamp": "2010-12-30 12:10:04.100"
         },
         {
             "TerrariumID": "611f737c143452662ecbe342",
-            "SensorName": "Temp sensor 2",
+            "SensorID": "Temp sensor 2",
             "Value": "22.5",
             "Timestamp": "2010-12-30 12:10:04.100"
         },
         {
             "TerrariumID": "611f737c143452662ecbe342",
-            "SensorName": "Hum sensor 1",
+            "SensorID": "Hum sensor 1",
             "Value": "75",
             "Timestamp": "2010-12-30 12:10:04.100"
         }
