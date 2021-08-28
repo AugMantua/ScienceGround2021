@@ -1,0 +1,29 @@
+version: "3.8"
+services:
+  mongodb:
+    image : mongo
+    container_name: science-ground-mongodb
+    environment:
+    - PUID=1000
+    - PGID=1000
+    - MONGO_INITDB_ROOT_USERNAME=scienceground2021
+    - MONGO_INITDB_ROOT_PASSWORD=KaplulVtxdt0yrNd
+    volumes:
+    - science-ground:/data/db
+    ports:
+    - 1234:27017
+    restart: unless-stopped
+
+  sciengegroundservice: 
+    depends_on:
+      - mongodb
+    build: .
+    environment:
+      - ATLAS_URI=mongodb://scienceground2021:KaplulVtxdt0yrNd@mongodb:27017/sciencegroundDB?authSource=admin&readPreference=primary&appname=MongoDB%20Compass&ssl=false
+      - MONGODB_NAME=sciencegroundDB  
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+volumes:
+  science-ground: {}
+
