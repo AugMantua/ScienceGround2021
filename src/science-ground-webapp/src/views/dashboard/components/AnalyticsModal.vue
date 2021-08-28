@@ -159,11 +159,11 @@ export default {
         .then((res) => {
           let temp = [];
           if (res.data.data != null) {
-            res.data.data.forEach((el) => {
-              if (!Object.keys(temp).includes(el.SensorID)) {
-                temp[el.SensorID] = [];
-              }
+            self.terrariumSensors.forEach((el) => {
+               temp[el.ID] = [];
+            });
 
+            res.data.data.forEach((el) => {
               temp[el.SensorID].push({
                 x: el.Timestamp,
                 y: el.Value,
