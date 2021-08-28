@@ -1,5 +1,5 @@
 <template>
-  <v-card outlined class="mt-3 ml-1" elevation="1">
+  <v-card outlined :class="!$vuetify.breakpoint.smAndDown ? 'ml-5' : ''" elevation="1" style="border: thin solid #999999;"   :width="!$vuetify.breakpoint.smAndDown ? '80%' :'100%'">
     <v-card-title outlined class="ma-0 pa-0">Filtri</v-card-title>
     <v-card outlined class="ma-2">
       <div class="ma-2">

@@ -15,12 +15,12 @@
         >
       </v-toolbar>
 
-      <v-row no-gutters>
+      <v-row no-gutters class="pa-1">
       
         <!-- GRAFICI -->
-        <v-col :cols="!$vuetify.breakpoint.smAndDown ? '10' : '12'">
-          <v-card elevation="2" class="mt-3 ml-4 mr-4">
-            <v-container>
+        <v-col :cols="!$vuetify.breakpoint.smAndDown ? '9' : '12'" :class="!$vuetify.breakpoint.smAndDown ? 'mt-9' : ''">
+          <v-card elevation="0">
+            <v-container style="border: thin solid #999999;" elevation="1">
               
               <v-tabs v-model="tabs" center-active>
                 <v-tab v-for="item in terrariumSensors" :key="item.ID">{{item.TypeOfMeasure}}</v-tab>      
@@ -34,9 +34,9 @@
 
             </v-container>
           </v-card >
-        </v-col>  <!-- GRAFICI -->
-        <v-col :cols="!$vuetify.breakpoint.smAndDown ? '2' : '12'">
-          <timefilsers />
+        </v-col>  <!-- FILTRI -->
+        <v-col :cols="!$vuetify.breakpoint.smAndDown ? '3' : '12'" :class="!$vuetify.breakpoint.smAndDown ? 'mt-9 d-flex align-start' : 'mt-2 d-flex align-start'"  >
+          <timefilsers style="widht:100%"/>
         </v-col>
       </v-row>
     </v-card>
