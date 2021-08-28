@@ -174,6 +174,7 @@ func dataDBinit(dbPath string) (*mongo.Database, context.Context) {
 
 /*Extract measures*/
 func getMeasures(db *mongo.Database, request measures_request_typ, ctx context.Context) ([]single_measure_data, error) {
+	var result []single_measure_data
 	var tempTerrarium terrariumData
 	var filter = bson.M{}
 
@@ -208,7 +209,13 @@ func getMeasures(db *mongo.Database, request measures_request_typ, ctx context.C
 		return tempTerrarium.LastUpdate, nil
 	}
 
-	return tempTerrarium.Measures, nil
+	for _, measure := range tempTerrarium.Measures {
+		if measure.SensorName == request.SensorID {
+			result = append(result, measure)
+		}
+	}
+
+	return result, nil
 }
 
 func createSession(db *mongo.Database, ctx context.Context, terrariumID string) (string, error) {
