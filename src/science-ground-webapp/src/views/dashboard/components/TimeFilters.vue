@@ -196,7 +196,7 @@ export default {
 
     this.dateFrom = moment(this.dateTo, "YYYY-MM-DD").subtract(3, 'months').format("YYYY-MM-DD");
 
-    EventBus.$on("updateChart", (value) => {
+    EventBus.$on("filterUpdated", (value) => {
       if (value.onlyLast == undefined || !value.onlyLast) {
         // unlock filter  DateToText
          self.$refs.TimeToText.disabled = false;
@@ -212,13 +212,11 @@ export default {
         self.$refs.TimeFromText.disabled = true;
          self.$refs.DateFromText.disabled = true;
       }
-
-      self.getTerrariunDatas(value.from, value.to);
     });
   },
   methods: {
     changeFilter() {
-      EventBus.$emit("updateChart", {
+      EventBus.$emit("filterUpdated", {
         to: moment(this.dateTo + " " + this.timeTo, "YYYY-MM-DD HH:mm").format("YYYY-MM-DD HH:mm"),
         from: moment(this.dateFrom + " " + this.timeFrom, "YYYY-MM-DD HH:mm").format("YYYY-MM-DD HH:mm"),
       });

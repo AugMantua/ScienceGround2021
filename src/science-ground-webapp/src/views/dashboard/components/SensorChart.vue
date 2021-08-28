@@ -11,9 +11,8 @@
 
 <script>
 import VueApexCharts from "vue-apexcharts";
-import Vue from "vue";
 import { EventBus } from "../../../main";
-import moment from "moment";
+
 export default {
   name: "SensorChart",
   components: {
@@ -24,10 +23,6 @@ export default {
     return {
       loading: true,
       toFilter: "",
-      fromFilter: "",
-
-      liveMode: false,
-      liveTimer: null,
 
       options: {
         chart: {
@@ -64,71 +59,60 @@ export default {
     let self = this;
 
     EventBus.$on("updateChart", (value) => {
-      if (value.onlyLast == undefined || !value.onlyLast) {
-        if (self.liveMode) {
-          self.liveMode = false;
-          clearInterval(self.liveTimer);
-          self.loading = false;
-        }else{
-          self.toFilter = value.to;
-          self.fromFilter = value.from;
-        }
-      } else if (value.onlyLast) {
-        self.startLiveChart();
-      }
-
-      self.getTerrariunDatas(value.from, value.to);
+      self.reloadAllData(value); 
     });
-
-    self.toFilter = new Date().toISOString().substr(0, 10);
-    self.fromFilter = moment(
-      new Date().toISOString().substr(0, 10),
-      "YYYY-MM-DD"
-    )
-      .subtract(3, "months")
-      .format("YYYY-MM-DD");
-    self.getTerrariunDatas();
+    EventBus.$on("filterUpdated", (value) => {
+      if (value.onlyLast != undefined || value.onlyLast) {
+        self.reloadAllData({ data: null, key: null }); // when enter in live mode reset chart
+      }
+    });
   },
   beforeDestroy() {
     EventBus.$off("updateChart");
-    if (this.liveMode) {
-      clearInterval(this.liveTimer);
-      this.loading = false;
-    }
+    EventBus.$off("filterUpdated");
   },
   methods: {
-    startLiveChart() {
-      let self = this;
-      self.liveMode = true;
-      self.loading = false;
-      this.liveTimer = setInterval(() => {
-        self.getTerrariunDatas();
-      }, 1000);
-    },
     reloadAllData(res) {
       let self = this;
-      let temp = [];
 
-      if (res.data.data == null) {
-        self.series = [
+      if (res.data == null) {
+        self.$refs.sensorChart.updateSeries([
           {
             data: [],
           },
-        ];
+        ]);
         self.loading = false;
         return;
       }
 
-      res.data.data.forEach((element) => {
-        temp.push({
-          x: element.Timestamp,
-          y: element.Value,
-        });
-      });
+      if (res.key != null && res.key != self.sensorDatas.ID) {
+        self.loading = false;
+        return;
+      }
+
+      // update series on mode live
+      if (res.liveMode) {
+        if (
+          self.series[0].data[self.series[0].data.length - 1].x !=
+          res.data[0].Timestamp
+        ) {
+          self.series[0].data.push({
+            x: res.data.data[0].Timestamp,
+            y: res.data.data[0].Value,
+          });
+
+          self.$refs.sensorChart.updateSeries([
+            {
+              data: self.series[0].data,
+            },
+          ]);
+        }
+        return;
+      }
 
       self.series = [
         {
-          data: temp,
+          data: res.data,
           name:
             self.sensorDatas.TypeOfMeasure +
             " (" +
@@ -148,50 +132,6 @@ export default {
         },
       });
       self.loading = false;
-    },
-    getTerrariunDatas() {
-      let self = this;
-      if (!self.liveMode) self.loading = true;
-
-      Vue.axios
-        .get(
-          "/data/measures/get?TerrariumID=" +
-            self.terrariumId +
-            "&From=" +
-            self.fromFilter +
-            "&To=" +
-            self.toFilter +
-            "&SensorID=" +
-            self.sensorDatas.ID +
-            "&LastUpdateOnly=" +
-            self.liveMode
-        )
-        .then((res) => {
-          console.log(res);
-
-          if (!self.liveMode) {
-            self.reloadAllData(res);
-          } else {
-            if (
-              self.series[0].data[self.series[0].data.length - 1].x !=
-              res.data.data[0].Timestamp
-            ) {
-              self.series[0].data.push({
-                x: res.data.data[0].Timestamp,
-                y: res.data.data[0].Value,
-              });
-
-              self.$refs.sensorChart.updateSeries([
-                {
-                  data: self.series[0].data,
-                },
-              ]);
-            }
-          }
-        })
-        .catch((err) => {
-          self.loading = false;
-        });
     },
   },
 };

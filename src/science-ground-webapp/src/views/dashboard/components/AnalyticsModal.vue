@@ -13,12 +13,11 @@
         <v-toolbar-title class="pa-0"
           >Andamento del terrario: {{ terrariumName }}</v-toolbar-title
         >
-        
       </v-toolbar>
 
       <v-row no-gutters class="pa-1">
         <!-- GRAFICI -->
-        
+
         <v-col
           :cols="!$vuetify.breakpoint.smAndDown ? '9' : '12'"
           :class="!$vuetify.breakpoint.smAndDown ? 'mt-9' : ''"
@@ -57,8 +56,7 @@
           "
         >
           <timefilters />
-           <livefilters />
-            
+          <livefilters />
         </v-col>
       </v-row>
     </v-card>
@@ -71,6 +69,8 @@ import VueApexCharts from "vue-apexcharts";
 import TimeFilters from "./TimeFilters.vue";
 import LiveFilters from "./LiveFilters.vue";
 import SensorChart from "./SensorChart.vue";
+import Vue from "vue";
+import moment from "moment";
 
 export default {
   name: "AnalyticsModal",
@@ -87,6 +87,9 @@ export default {
       terrariumName: "",
       terrariumId: "",
       terrariumSensors: [],
+
+      liveTimer: null,
+      liveModeEnabled: false,
     };
   },
 
@@ -98,6 +101,29 @@ export default {
       self.terrariumName = value.terrariumName;
       self.terrariumId = value.terrariumId;
       self.terrariumSensors = value.sensorsData;
+
+      let toFilter = new Date().toISOString().substr(0, 10);
+      let fromFilter = moment(
+        new Date().toISOString().substr(0, 10),
+        "YYYY-MM-DD "
+      )
+        .subtract(3, "months")
+        .format("YYYY-MM-DD");
+      self.getSensorsMeasures(fromFilter.toString() + "00:00", toFilter.toString() + "23:59");
+    });
+
+    EventBus.$on("filterUpdated", (value) => {
+      if (value.onlyLast != undefined && !value.onlyLast) {
+        self.liveModeEnabled = false;
+        clearInterval(self.liveTimer);
+      }
+      if (value.onlyLast != undefined && value.onlyLast) {
+        self.liveModeEnabled = true;
+        self.startLiveChart();
+      }
+      if (value.to != undefined && value.from != undefined) {
+        self.getSensorsMeasures(value.from, value.to);
+      }
     });
   },
 
@@ -108,6 +134,55 @@ export default {
       this.terrariumSensors = [];
       this.$forceUpdate();
       this.isOpen = false;
+    },
+    startLiveChart() {
+      let self = this;
+
+      this.liveTimer = setInterval(() => {
+        self.getSensorsMeasures("", "");
+      }, 1000);
+    },
+    getSensorsMeasures(from, to) {
+      let self = this;
+
+      Vue.axios
+        .get(
+          "/data/measures/get?TerrariumID=" +
+            self.terrariumId +
+            "&From=" +
+            from +
+            "&To=" +
+            to +
+            "&LastUpdateOnly=" +
+            self.liveModeEnabled
+        )
+        .then((res) => {
+          let temp = [];
+          if (res.data.data != null) {
+            res.data.data.forEach((el) => {
+              if (!Object.keys(temp).includes(el.SensorID)) {
+                temp[el.SensorID] = [];
+              }
+
+              temp[el.SensorID].push({
+                x: el.Timestamp,
+                y: el.Value,
+              });
+            });
+
+            let tempKeys = Object.keys(temp);
+            tempKeys.forEach((el) => {
+              EventBus.$emit("updateChart", {
+                key: el,
+                data: temp[el],
+                liveMode: self.liveModeEnabled,
+              });
+            });
+          }
+        })
+        .catch((err) => {
+          self.loading = false;
+        });
     },
   },
 };
