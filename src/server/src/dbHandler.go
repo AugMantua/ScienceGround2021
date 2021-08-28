@@ -30,7 +30,6 @@ type terrariumData struct {
 	MACAddres       string                `bson:"macAddress,omitempty"`
 	MagicKey        string                `bson:"magicKey,omitempty"`
 	AuthState       bool                  `bson:"authState"`
-	Measures        []single_measure_data `bson:"measures,omitempty"`
 	LastUpdate      []single_measure_data `bson:"lastUpdate,omitempty"`
 	UpdateOn        string                `bson:"updateOn,omitempty"`
 }
@@ -81,6 +80,7 @@ type measures_data struct {
 }
 
 var _TERRARIUMS_COLLECTION = "terrariums"
+var _MEASURES_COLLECTION = "measures"
 
 func insertMeasures(db *mongo.Database, ctx context.Context, measures []push_measure_request_typ) error {
 
@@ -135,8 +135,9 @@ func insertMeasures(db *mongo.Database, ctx context.Context, measures []push_mea
 		updateMeasures = append(updateMeasures, singleMeasure)
 	}
 
-	//Quick n dirty, find a way to generate bson programmatically
 	var update bson.M
+
+	db.Collection(_MEASURES_COLLECTION).InsertMany(ctx, updateMeasures)
 
 	for _, singleMeasure := range updateMeasures {
 		update = bson.M{"$push": bson.M{"measures": singleMeasure}}
