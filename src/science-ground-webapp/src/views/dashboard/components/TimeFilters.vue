@@ -14,6 +14,7 @@
             <v-text-field
               v-model="dateFrom"
               label="Data di inizio"
+               ref="DateFromText"
               readonly
               v-bind="attrs"
               v-on="on"
@@ -47,6 +48,7 @@
             <v-text-field
               v-model="timeFrom"
               label="Ora di inizio"
+               ref="TimeFromText"
               readonly
               v-bind="attrs"
               v-on="on"
@@ -84,6 +86,7 @@
               v-model="dateTo"
               label="Data di fine"
               readonly
+              ref="DateToText"
               v-bind="attrs"
               v-on="on"
             ></v-text-field>
@@ -115,6 +118,7 @@
           <template v-slot:activator="{ on, attrs }">
             <v-text-field
               v-model="timeTo"
+              ref="TimeToText"
               label="Ora di fine"
               readonly
               v-bind="attrs"
@@ -191,6 +195,26 @@ export default {
     let self = this;
 
     this.dateFrom = moment(this.dateTo, "YYYY-MM-DD").subtract(3, 'months').format("YYYY-MM-DD");
+
+    EventBus.$on("updateChart", (value) => {
+      if (value.onlyLast == undefined || !value.onlyLast) {
+        // unlock filter  DateToText
+         self.$refs.TimeToText.disabled = false;
+         self.$refs.DateToText.disabled = false;
+
+         self.$refs.TimeFromText.disabled = false;
+         self.$refs.DateFromText.disabled = false;
+      } else if (value.onlyLast) {
+        // Block filters
+        self.$refs.TimeToText.disabled = true;
+        self.$refs.DateToText.disabled = true;
+
+        self.$refs.TimeFromText.disabled = true;
+         self.$refs.DateFromText.disabled = true;
+      }
+
+      self.getTerrariunDatas(value.from, value.to);
+    });
   },
   methods: {
     changeFilter() {
