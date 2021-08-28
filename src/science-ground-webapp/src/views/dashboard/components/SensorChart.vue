@@ -64,14 +64,14 @@ export default {
     let self = this;
 
     EventBus.$on("updateChart", (value) => {
-      if (value.onlyLast == undefined) {
-        self.toFilter = value.to;
-        self.fromFilter = value.from;
-
+      if (value.onlyLast == undefined || !value.onlyLast) {
         if (self.liveMode) {
           self.liveMode = false;
           clearInterval(self.liveTimer);
           self.loading = false;
+        }else{
+          self.toFilter = value.to;
+          self.fromFilter = value.from;
         }
       } else if (value.onlyLast) {
         self.startLiveChart();
@@ -173,7 +173,7 @@ export default {
             self.reloadAllData(res);
           } else {
             if (
-              self.series[0].data[self.series[0].data.length - 1].Timestamp !=
+              self.series[0].data[self.series[0].data.length - 1].x !=
               res.data.data[0].Timestamp
             ) {
               self.series[0].data.push({

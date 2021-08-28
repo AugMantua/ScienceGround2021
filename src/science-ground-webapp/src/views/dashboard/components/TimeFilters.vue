@@ -1,5 +1,5 @@
 <template>
-  <v-card outlined :class="!$vuetify.breakpoint.smAndDown ? 'ml-5' : ''" elevation="1" style="border: thin solid #999999;"   :width="!$vuetify.breakpoint.smAndDown ? '80%' :'100%'">
+  <v-card outlined :class="!$vuetify.breakpoint.smAndDown ? 'ml-5 mb-2' : 'mb-2'" elevation="0" style="border: thin solid #999999;"   :width="!$vuetify.breakpoint.smAndDown ? '80%' :'100%'">
     <v-card-title outlined class="ma-0 pa-0">Filtri</v-card-title>
     <v-card outlined class="ma-2">
       <div class="ma-2">
@@ -168,9 +168,7 @@ export default {
     },
 
   },
-   beforeDestroy(){
-    EventBus.$off('changeDialogState');
-  },
+
   watch:{
     menuDateTo(){
       if(!this.menuDateTo && !this.validDateInsert)
@@ -193,14 +191,6 @@ export default {
     let self = this;
 
     this.dateFrom = moment(this.dateTo, "YYYY-MM-DD").subtract(3, 'months').format("YYYY-MM-DD");
-
-    // on open reset filter
-     EventBus.$on("changeDialogState", (value) => {
-      self.dateTo = new Date().toISOString().substr(0, 10);
-      self.dateFrom = moment(this.dateTo, "YYYY-MM-DD").subtract(3, 'months').format("YYYY-MM-DD"); 
-      self.timeTo = "23:59";
-      self.timeFrom = "00:01"; 
-    });
   },
   methods: {
     changeFilter() {

@@ -13,30 +13,52 @@
         <v-toolbar-title class="pa-0"
           >Andamento del terrario: {{ terrariumName }}</v-toolbar-title
         >
+        
       </v-toolbar>
 
       <v-row no-gutters class="pa-1">
-      
         <!-- GRAFICI -->
-        <v-col :cols="!$vuetify.breakpoint.smAndDown ? '9' : '12'" :class="!$vuetify.breakpoint.smAndDown ? 'mt-9' : ''">
+        
+        <v-col
+          :cols="!$vuetify.breakpoint.smAndDown ? '9' : '12'"
+          :class="!$vuetify.breakpoint.smAndDown ? 'mt-9' : ''"
+        >
           <v-card elevation="0">
-            <v-container style="border: thin solid #999999;" elevation="1">
-              
+            <v-container style="border: thin solid #999999" elevation="1">
               <v-tabs v-model="tabs" center-active>
-                <v-tab v-for="item in terrariumSensors" :key="item.ID">{{item.TypeOfMeasure}}</v-tab>      
+                <v-tab v-for="item in terrariumSensors" :key="item.ID">{{
+                  item.TypeOfMeasure
+                }}</v-tab>
               </v-tabs>
 
               <v-tabs-items v-model="tabs">
-                <v-tab-item v-for="item in terrariumSensors" :key="item.ID" :eager="true">
-                  <sensorchart v-bind:terrariumId="terrariumId" v-bind:sensorDatas="item"/>
+                <v-tab-item
+                  v-for="item in terrariumSensors"
+                  :key="item.ID"
+                  :eager="true"
+                >
+                  <sensorchart
+                    v-bind:terrariumId="terrariumId"
+                    v-bind:sensorDatas="item"
+                  />
                 </v-tab-item>
               </v-tabs-items>
-
             </v-container>
-          </v-card >
-        </v-col>  <!-- FILTRI -->
-        <v-col :cols="!$vuetify.breakpoint.smAndDown ? '3' : '12'" :class="!$vuetify.breakpoint.smAndDown ? 'mt-9 d-flex align-start' : 'mt-2 d-flex align-start'"  >
-          <timefilsers style="widht:100%"/>
+          </v-card>
+        </v-col>
+        <!-- FILTRI -->
+        <v-col
+          :cols="!$vuetify.breakpoint.smAndDown ? '3' : '12'"
+          class="d-flex flex-column"
+          :class="
+            !$vuetify.breakpoint.smAndDown
+              ? 'mt-9 d-flex align-start'
+              : 'mt-2 d-flex align-start'
+          "
+        >
+          <timefilters />
+           <livefilters />
+            
         </v-col>
       </v-row>
     </v-card>
@@ -46,14 +68,16 @@
 <script>
 import { EventBus } from "../../../main";
 import VueApexCharts from "vue-apexcharts";
-import TimeFilsers from "./TimeFilsers.vue";
+import TimeFilters from "./TimeFilters.vue";
+import LiveFilters from "./LiveFilters.vue";
 import SensorChart from "./SensorChart.vue";
 
 export default {
   name: "AnalyticsModal",
   components: {
     apexchart: VueApexCharts,
-    timefilsers: TimeFilsers,
+    timefilters: TimeFilters,
+    livefilters: LiveFilters,
     sensorchart: SensorChart,
   },
   data() {
@@ -62,7 +86,7 @@ export default {
       tabs: null,
       terrariumName: "",
       terrariumId: "",
-      terrariumSensors:  []
+      terrariumSensors: [],
     };
   },
 
@@ -74,18 +98,17 @@ export default {
       self.terrariumName = value.terrariumName;
       self.terrariumId = value.terrariumId;
       self.terrariumSensors = value.sensorsData;
-     
     });
   },
 
   methods: {
-    close(){
+    close() {
       this.terrariumName = "";
       this.terrariumId = "";
       this.terrariumSensors = [];
       this.$forceUpdate();
       this.isOpen = false;
-    }
+    },
   },
 };
 </script>
