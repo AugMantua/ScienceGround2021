@@ -59,7 +59,7 @@ export default {
     let self = this;
 
     EventBus.$on("updateChart", (value) => {
-      self.reloadAllData(value); 
+      self.reloadAllData(value);
     });
     EventBus.$on("filterUpdated", (value) => {
       if (value.onlyLast != undefined || value.onlyLast) {
@@ -93,13 +93,9 @@ export default {
       // update series on mode live
       if (res.liveMode) {
         if (
-          self.series[0].data[self.series[0].data.length - 1].x !=
-          res.data[0].Timestamp
+          self.series[0].data[self.series[0].data.length - 1].x != res.data[0].x
         ) {
-          self.series[0].data.push({
-            x: res.data.data[0].Timestamp,
-            y: res.data.data[0].Value,
-          });
+          self.series[0].data.push(res.data[0]);
 
           self.$refs.sensorChart.updateSeries([
             {
