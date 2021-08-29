@@ -85,6 +85,10 @@ func AddMeasure(c *gin.Context) {
 		c.JSON(http.StatusUnprocessableEntity, "Invalid json provided")
 		return
 	}
+	if len(measures_input.Data) == 0 {
+		c.JSON(http.StatusBadRequest, "Bad request")
+		return
+	}
 
 	err := insertMeasures(dbConnection, ctx, measures_input.Data)
 	if err != nil {

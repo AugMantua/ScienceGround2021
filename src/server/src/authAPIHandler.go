@@ -31,7 +31,14 @@ func AuthRequest(c *gin.Context) {
 		}
 		return
 	}
+
+	var sensorsMap = make(map[string]interface{})
+	for _, sensor := range terrarium.Sensors {
+		sensorsMap[sensor.TypeOfMeasure] = sensor
+	}
+
 	c.JSON(200, gin.H{
-		"data": terrarium.ID,
+		"ID":      terrarium.ID,
+		"Sensors": sensorsMap,
 	})
 }

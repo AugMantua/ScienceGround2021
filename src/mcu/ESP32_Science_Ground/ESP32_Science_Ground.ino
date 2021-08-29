@@ -101,6 +101,7 @@ const char* server = "192.168.22.90";  // server's address
 const int serverPort = 8080;                    // server port
 const char* resource = "/data/measures/add";    // resource requested
 const char* login = "/devices/auth";            // auth API
+StaticJsonDocument<1024> authResponse;          // global var -> used in the main loop to extract login infos
 //const char* resource = "/data/terrariums/get";    // resource requested
 
 int i = 0;
@@ -125,6 +126,7 @@ void setup() {
   byte buf[BL] = CMD_ABC_OFF;                   // We are setting Automatic Baseline Correction to OFF
   sendCmdToMhz19(buf);
   cmdSent = false;                              // ready to process new commands on MH-Z19B (to be changed, absorbed by state machine) 
+  client.setTimeout(HTTP_TIMEOUT);              // set Client timeout
 }
 
 void loop() { //Choose Serial1 or Serial2 as required
@@ -251,38 +253,45 @@ void loop() { //Choose Serial1 or Serial2 as required
         Serial.println("STATUS: PREPARE_DATA");
         StaticJsonDocument<768> doc;
 
+      
         JsonArray Data = doc.createNestedArray("Data");
 
         JsonObject Data_Temp = Data.createNestedObject();
-        Data_Temp["TerrariumID"] = "Terrain_1";
-        Data_Temp["SensorID"] = "Temp";
+        Data_Temp["TerrariumID"] = authResponse["ID"];
+        Data_Temp["SensorID"] = authResponse["Sensors"]["Temperature_1"]["ID"];
         Data_Temp["Value"] = (String)tempC;
         Data_Temp["Timestamp"] = (String)orario;
+        Data_Temp["SessionKey"] = "";
 
         JsonObject Data_Rugiada = Data.createNestedObject();
-        Data_Rugiada["TerrariumID"] = "Terrain_1";
-        Data_Rugiada["SensorID"] = "PuntoRugiada";
+        Data_Rugiada["TerrariumID"] = authResponse["ID"];
+        Data_Rugiada["SensorID"] = authResponse["Sensors"]["PuntoRugiada_1"]["ID"];
         Data_Rugiada["Value"] = (String)dew_pointC;
         Data_Rugiada["Timestamp"] = (String)orario;
+        Data_Rugiada["SessionKey"] = "";
 
         JsonObject Data_Umid = Data.createNestedObject();
-        Data_Umid["TerrariumID"] = "Terrain_1";
-        Data_Umid["SensorID"] = "Umid";
+        Data_Umid["TerrariumID"] = authResponse["ID"];
+        Data_Umid["SensorID"] = authResponse["Sensors"]["Humid_1"]["ID"];
         Data_Umid["Value"] = (String)RH;
         Data_Umid["Timestamp"] = (String)orario;
+        Data_Umid["SessionKey"] = "";
 
         JsonObject Data_VPD = Data.createNestedObject();
-        Data_VPD["TerrariumID"] = "Terrain_1";
-        Data_VPD["SensorID"] = "VPD";
+        Data_VPD["TerrariumID"] = authResponse["ID"];
+        Data_VPD["SensorID"] = authResponse["Sensors"]["VPD_1"]["ID"];
         Data_VPD["Value"] = (String)vpd_kPa;
         Data_VPD["Timestamp"] = (String)orario;
+        Data_VPD["SessionKey"] = "";
 
         JsonObject Data_CO2 = Data.createNestedObject();
-        Data_CO2["TerrariumID"] = "Terrain_1";
-        Data_CO2["SensorID"] = "CO2";
+        Data_CO2["TerrariumID"] = authResponse["ID"];
+        Data_CO2["SensorID"] = authResponse["Sensors"]["CO2_1"]["ID"];
         Data_CO2["Value"] = (String)CO2;
         Data_CO2["Timestamp"] = (String)orario;
+        Data_CO2["SessionKey"] = "";
 
+        postMessage = "";
         serializeJson(doc, postMessage);
         serializeJson(doc, Serial);
         stato_macchina = SEND_DATA;
@@ -548,6 +557,8 @@ bool skipResponseHeaders() {
 
 #define TRY_BACK_TIME 300 // 5 minutes
 
+String loginResponse;
+
 bool tryAuth(String* _terrariumId, int* auth_step){
 
   switch(*auth_step){
@@ -573,39 +584,38 @@ bool tryAuth(String* _terrariumId, int* auth_step){
     case CREATE_REQUEST:
     {
       Serial.println("STATUS: CREATE_REQUEST");
-      StaticJsonDocument<768> doc;
-
-      doc["MACAddres"] = mac;
+      StaticJsonDocument<2048> doc;
+      StaticJsonDocument<2048> sensorsArray;
+      
+      String wifiMacString = WiFi.macAddress();
+      
+      doc["MACAddres"] = wifiMacString;
       doc["MagicKey"] = _MAGIC_KEY;
       doc["TypeOfTerrarium"] = _TYPE_OF_TERRARIUM;
       doc["TerrariumAlias"] = _TERRARIUM_ALIAS;
     
-      JsonArray Sensors = doc.createNestedArray();
-      
-      JsonObject Data_Temp = Sensors.createNestedObject();
-      Data_Temp["Name"] = "Internal temperature sensor";
-      Data_Temp["TypeOfMeasure"] = "Temperature_1";
-      Data_Temp["Extra_data"] = "°C";
-    
-      JsonObject Data_Rugiada = Sensors.createNestedObject();
-      Data_Rugiada["Name"] = "Punto Rugiada";
-      Data_Rugiada["TypeOfMeasure"] = "PuntoRugiada_1";
-      Data_Rugiada["Extra_data"] = "";
-    
-      JsonObject Data_Umid = Sensors.createNestedObject();
-      Data_Umid["Name"] = "Umid";
-      Data_Umid["TypeOfMeasure"] = "Umid_1";
-      Data_Umid["Extra_data"] = "%";
-    
-      JsonObject Data_VPD = Sensors.createNestedObject();
-      Data_VPD["Name"] = "VPD";
-      Data_VPD["TypeOfMeasure"] = "VPD_1";
-      Data_VPD["Extra_data"] = "%";
-    
-      JsonObject Data_CO2 = Sensors.createNestedObject();
-      Data_CO2["Name"] = "CO2";
-      Data_CO2["TypeOfMeasure"] = "CO2_1";
-      Data_CO2["Extra_data"] = "ppm";
+      sensorsArray[0]["Name"] = "Internal temperature sensor";
+      sensorsArray[0]["TypeOfMeasure"] = "Temperature_1";
+      sensorsArray[0]["Extra_data"] = "°C";
+
+      sensorsArray[1]["Name"] = "Punto Rugiada";
+      sensorsArray[1]["TypeOfMeasure"] = "PuntoRugiada_1";
+      sensorsArray[1]["Extra_data"] = "";
+
+      sensorsArray[2]["Name"] = "Humidity";
+      sensorsArray[2]["TypeOfMeasure"] = "Humid_1";
+      sensorsArray[2]["Extra_data"] = "";
+
+      sensorsArray[3]["Name"] = "VPD";
+      sensorsArray[3]["TypeOfMeasure"] = "VPD_1";
+      sensorsArray[3]["Extra_data"] = "%";
+
+      sensorsArray[4]["Name"] = "Punto CO2";
+      sensorsArray[4]["TypeOfMeasure"] = "CO2_1";
+      sensorsArray[4]["Extra_data"] = "ppm";
+
+
+      doc["Sensors"] = sensorsArray;
 
       serializeJson(doc, postMessage);
       serializeJson(doc, Serial);
@@ -626,10 +636,10 @@ bool tryAuth(String* _terrariumId, int* auth_step){
         http.addHeader("Content-Type", "application/json");
         int httpCode = http.POST(postMessage);
         if (httpCode > 0) { //Check for the returning code
-          String payload = http.getString();
+          loginResponse = http.getString();
           Serial.println(httpCode);
-          Serial.println(payload);
-          *auth_step = WAIT_RESPONSE;
+          Serial.println(loginResponse);
+          *auth_step = CHECK_RESPONSE;
         }
         else {
           Serial.println("Error on HTTP request");
@@ -655,30 +665,18 @@ bool tryAuth(String* _terrariumId, int* auth_step){
       break;
     }
 
-    case (WAIT_RESPONSE):               // Status used when waiting for a response from the server that collects measurements
-      {
-        Serial.println("STATUS: WAITING_RESPONSE");
-        skipResponseHeaders();
-        *auth_step = RESPONSE_OK;
-
-      }
-      return false;
-      break;
-
     case (CHECK_RESPONSE):               // Status used when response received from the server that collects measurements is OK
       {
         Serial.println("STATUS: RESPONSE_OK");
-        Serial.println(response);
+        Serial.println(loginResponse);
         if (!client.connected()) {
           Serial.println();
           Serial.println("disconnecting http client...");
           client.stop();
         }
-        StaticJsonDocument<200> doc;
-        deserializeJson(doc, response);
-        const char* id = doc["data"];
-        *_terrariumId = id;
-        Serial.println(*_terrariumId);
+        deserializeJson(authResponse, loginResponse);
+        const char* id = authResponse["ID"];
+        Serial.println(id);
         *auth_step = AUTH_CLOSE;
       }
       return false;
@@ -686,7 +684,7 @@ bool tryAuth(String* _terrariumId, int* auth_step){
 
     case (AUTH_CLOSE):                     // Status used when disconnecting from the Wi-Fi network
       {
-        Serial.println("STATUS: WIFI_DISCONNECT");
+        Serial.println("STATUS: AUTH_CLOSE");
         if (WiFi.status() == WL_CONNECTED){
           WiFi.disconnect();
         }
