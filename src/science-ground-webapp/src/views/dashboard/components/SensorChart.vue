@@ -61,15 +61,10 @@ export default {
     EventBus.$on("updateChart", (value) => {
       self.reloadAllData(value);
     });
-    EventBus.$on("filterUpdated", (value) => {
-      if (value.onlyLast != undefined || value.onlyLast) {
-        self.reloadAllData({ data: null, key: null }); // when enter in live mode reset chart
-      }
-    });
+    
   },
   beforeDestroy() {
     EventBus.$off("updateChart");
-    EventBus.$off("filterUpdated");
   },
   methods: {
     reloadAllData(res) {
@@ -82,6 +77,7 @@ export default {
           },
         ]);
         self.loading = false;
+         self.series[0].data = [];
         return;
       }
 
@@ -93,6 +89,7 @@ export default {
       // update series on mode live
       if (res.liveMode) {
         if (
+          self.series[0].data.length == 0 ||
           self.series[0].data[self.series[0].data.length - 1].x != res.data[0].x
         ) {
           self.series[0].data.push(res.data[0]);

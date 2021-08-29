@@ -109,19 +109,25 @@ export default {
       )
         .subtract(3, "months")
         .format("YYYY-MM-DD");
-      self.getSensorsMeasures(fromFilter.toString() + "00:00", toFilter.toString() + "23:59");
+      self.getSensorsMeasures(
+        fromFilter.toString() + "00:00",
+        toFilter.toString() + "23:59"
+      );
     });
 
     EventBus.$on("filterUpdated", (value) => {
       if (value.onlyLast != undefined && !value.onlyLast) {
         self.liveModeEnabled = false;
         clearInterval(self.liveTimer);
-      }
-      if (value.onlyLast != undefined && value.onlyLast) {
+      } else if (value.onlyLast != undefined && value.onlyLast) {
         self.liveModeEnabled = true;
+
+        EventBus.$emit("updateChart", {
+          data: null,
+        });
+
         self.startLiveChart();
-      }
-      if (value.to != undefined && value.from != undefined) {
+      } else if (value.to != undefined && value.from != undefined) {
         self.getSensorsMeasures(value.from, value.to);
       }
     });
@@ -132,15 +138,19 @@ export default {
       this.terrariumName = "";
       this.terrariumId = "";
       this.terrariumSensors = [];
-      this.$forceUpdate();
       this.isOpen = false;
+
+      if (this.liveModeEnabled) {
+        this.liveModeEnabled = false;
+        clearInterval(self.liveTimer);
+      }
     },
     startLiveChart() {
       let self = this;
 
       this.liveTimer = setInterval(() => {
         self.getSensorsMeasures("", "");
-      }, 1000);
+      }, 5000);
     },
     getSensorsMeasures(from, to) {
       let self = this;
@@ -160,7 +170,7 @@ export default {
           let temp = [];
           if (res.data.data != null) {
             self.terrariumSensors.forEach((el) => {
-               temp[el.ID] = [];
+              temp[el.ID] = [];
             });
 
             res.data.data.forEach((el) => {
