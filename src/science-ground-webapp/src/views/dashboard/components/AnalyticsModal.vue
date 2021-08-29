@@ -25,7 +25,7 @@
           <v-card elevation="0">
             <v-container style="border: thin solid #999999" elevation="1">
               <v-tabs v-model="tabs" center-active>
-                <v-tab key="0"  v-if="isOpen">{{"Dati incrociati"}}</v-tab>
+                <v-tab key="0" v-if="isOpen">{{ "Dati incrociati" }}</v-tab>
                 <v-tab v-for="item in terrariumSensors" :key="item.ID">{{
                   item.TypeOfMeasure
                 }}</v-tab>
@@ -33,7 +33,11 @@
 
               <v-tabs-items v-model="tabs">
                 <v-tab-item key="0">
-                 <sensorchart v-bind:terrariumId="terrariumId" v-bind:sensorDatas="null" v-if="isOpen"/>
+                  <sensorchart
+                    v-bind:terrariumId="terrariumId"
+                    v-bind:sensorDatas="null"
+                    v-if="isOpen"
+                  />
                 </v-tab-item>
                 <v-tab-item
                   v-for="item in terrariumSensors"
@@ -75,6 +79,7 @@ import LiveFilters from "./LiveFilters.vue";
 import SensorChart from "./SensorChart.vue";
 import Vue from "vue";
 import moment from "moment";
+import { TaskTimer } from "tasktimer";
 
 export default {
   name: "AnalyticsModal",
@@ -123,7 +128,7 @@ export default {
       if (value.onlyLast != undefined && !value.onlyLast) {
         self.liveModeEnabled = false;
         self.clearChart();
-        clearInterval(self.liveTimer);
+        this.liveTimer.stop();
       } else if (value.onlyLast != undefined && value.onlyLast) {
         self.liveModeEnabled = true;
         self.clearChart();
@@ -131,6 +136,15 @@ export default {
       } else if (value.to != undefined && value.from != undefined) {
         self.getSensorsMeasures(value.from, value.to);
       }
+    });
+
+    this.liveTimer = new TaskTimer(1000);
+    this.liveTimer.add({
+      id: "live", // unique id of the task
+      tickInterval: 5, // run every 5 ticks (5 x interval = 5000 ms)
+      callback(task) {
+        self.getSensorsMeasures("", "");
+      },
     });
   },
 
@@ -140,23 +154,18 @@ export default {
       this.terrariumId = "";
       this.terrariumSensors = [];
       this.isOpen = false;
-
-      if (this.liveModeEnabled) {
-        this.liveModeEnabled = false;
-        clearInterval(self.liveTimer);
-      }
+      this.liveModeEnabled = false;
+      this.liveTimer.stop();
     },
     startLiveChart() {
       let self = this;
 
-      this.liveTimer = setInterval(() => {
-        self.getSensorsMeasures("", "");
-      }, 5000);
+      this.liveTimer.start();
     },
-    clearChart(){
-        EventBus.$emit("updateChart", {
-          data: null,
-        });
+    clearChart() {
+      EventBus.$emit("updateChart", {
+        data: null,
+      });
     },
     getSensorsMeasures(from, to) {
       let self = this;
@@ -192,7 +201,7 @@ export default {
                 key: el,
                 data: temp[el],
                 liveMode: self.liveModeEnabled,
-                sensors: self.terrariumSensors
+                sensors: self.terrariumSensors,
               });
             });
           }
