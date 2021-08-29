@@ -30,7 +30,7 @@ export default {
   methods: {
     changeFilter() {
       let self = this;
-      EventBus.$emit("updateChart", {
+      EventBus.$emit("filterUpdated", {
         onlyLast: self.liveSwitchState
       });
     }

@@ -1,5 +1,11 @@
 <template>
-  <v-card outlined :class="!$vuetify.breakpoint.smAndDown ? 'ml-5 mb-2' : 'mb-2'" elevation="0" style="border: thin solid #999999;"   :width="!$vuetify.breakpoint.smAndDown ? '80%' :'100%'">
+  <v-card
+    outlined
+    :class="!$vuetify.breakpoint.smAndDown ? 'ml-5 mb-2' : 'mb-2'"
+    elevation="0"
+    style="border: thin solid #999999"
+    :width="!$vuetify.breakpoint.smAndDown ? '80%' : '100%'"
+  >
     <v-card-title outlined class="ma-0 pa-0">Filtri</v-card-title>
     <v-card outlined class="ma-2">
       <div class="ma-2">
@@ -14,7 +20,7 @@
             <v-text-field
               v-model="dateFrom"
               label="Data di inizio"
-               ref="DateFromText"
+              ref="DateFromText"
               readonly
               v-bind="attrs"
               v-on="on"
@@ -48,13 +54,18 @@
             <v-text-field
               v-model="timeFrom"
               label="Ora di inizio"
-               ref="TimeFromText"
+              ref="TimeFromText"
               readonly
               v-bind="attrs"
               v-on="on"
             ></v-text-field>
           </template>
-          <v-time-picker v-if="menuTimeFrom" v-model="timeFrom" full-width format="24hr">
+          <v-time-picker
+            v-if="menuTimeFrom"
+            v-model="timeFrom"
+            full-width
+            format="24hr"
+          >
             <v-spacer></v-spacer>
             <v-btn text color="primary" @click="menuTimeFrom = false">
               Cancel
@@ -93,14 +104,14 @@
           </template>
           <v-date-picker v-model="dateTo" scrollable>
             <v-spacer></v-spacer>
-            <v-btn text color="primary" @click="menuDateTo = false" >
+            <v-btn text color="primary" @click="menuDateTo = false">
               Cancel
             </v-btn>
             <v-btn
               text
               color="primary"
               @click="$refs.dialogDateTo.save(dateTo)"
-               :disabled="validDateInsert"
+              :disabled="validDateInsert"
             >
               OK
             </v-btn>
@@ -125,7 +136,12 @@
               v-on="on"
             ></v-text-field>
           </template>
-          <v-time-picker v-if="menuTimeTo" v-model="timeTo" full-width format="24hr" > 
+          <v-time-picker
+            v-if="menuTimeTo"
+            v-model="timeTo"
+            full-width
+            format="24hr"
+          >
             <v-spacer></v-spacer>
             <v-btn text color="primary" @click="menuTimeTo = false">
               Cancel
@@ -148,7 +164,7 @@
 <script>
 import Vue from "vue";
 import { EventBus } from "../../../main";
-import moment from 'moment';
+import moment from "moment";
 
 export default {
   name: "TimeFilters",
@@ -166,63 +182,67 @@ export default {
       menuTimeFrom: false,
     };
   },
-  computed:{
-    validDateInsert(){
-      return moment(this.dateFrom + ' ' + this.timeFrom, 'YYYY-MM-DD HH:mm') > moment(this.dateTo + ' ' + this.timeTo, 'YYYY-MM-DD HH:mm');
+  computed: {
+    validDateInsert() {
+      return (
+        moment(this.dateFrom + " " + this.timeFrom, "YYYY-MM-DD HH:mm") >
+        moment(this.dateTo + " " + this.timeTo, "YYYY-MM-DD HH:mm")
+      );
     },
-
   },
 
-  watch:{
-    menuDateTo(){
-      if(!this.menuDateTo && !this.validDateInsert)
-        this.changeFilter();
+  watch: {
+    menuDateTo() {
+      if (!this.menuDateTo && !this.validDateInsert) this.changeFilter();
     },
-    menuDialogFrom(){
-      if(!this.menuDialogFrom && !this.validDateInsert)
-        this.changeFilter();
+    menuDialogFrom() {
+      if (!this.menuDialogFrom && !this.validDateInsert) this.changeFilter();
     },
-    menuTimeTo(){
-      if(!this.menuTimeTo && !this.validDateInsert)
-       this.changeFilter();
+    menuTimeTo() {
+      if (!this.menuTimeTo && !this.validDateInsert) this.changeFilter();
     },
-    menuTimeFrom(){
-       if(!this.menuTimeFrom && !this.validDateInsert)
-         this.changeFilter();
-    }
+    menuTimeFrom() {
+      if (!this.menuTimeFrom && !this.validDateInsert) this.changeFilter();
+    },
   },
   mounted() {
     let self = this;
 
-    this.dateFrom = moment(this.dateTo, "YYYY-MM-DD").subtract(3, 'months').format("YYYY-MM-DD");
+    this.dateFrom = moment(this.dateTo, "YYYY-MM-DD")
+      .subtract(3, "months")
+      .format("YYYY-MM-DD");
 
-    EventBus.$on("updateChart", (value) => {
-      if (value.onlyLast == undefined || !value.onlyLast) {
-        // unlock filter  DateToText
-         self.$refs.TimeToText.disabled = false;
-         self.$refs.DateToText.disabled = false;
+    EventBus.$on("filterUpdated", (value) => {
+      if (value.onlyLast != undefined && !value.onlyLast) {
+        self.$refs.TimeToText.disabled = false;
+        self.$refs.DateToText.disabled = false;
 
-         self.$refs.TimeFromText.disabled = false;
-         self.$refs.DateFromText.disabled = false;
-      } else if (value.onlyLast) {
-        // Block filters
+        self.$refs.TimeFromText.disabled = false;
+        self.$refs.DateFromText.disabled = false;
+        
+        self.changeFilter();
+      } else if (value.onlyLast != undefined && value.onlyLast) {
         self.$refs.TimeToText.disabled = true;
         self.$refs.DateToText.disabled = true;
 
         self.$refs.TimeFromText.disabled = true;
-         self.$refs.DateFromText.disabled = true;
+        self.$refs.DateFromText.disabled = true;
+      } else if (value.to != undefined && value.from != undefined) {
       }
-
-      self.getTerrariunDatas(value.from, value.to);
     });
   },
   methods: {
     changeFilter() {
-      EventBus.$emit("updateChart", {
-        to: moment(this.dateTo + " " + this.timeTo, "YYYY-MM-DD HH:mm").format("YYYY-MM-DD HH:mm"),
-        from: moment(this.dateFrom + " " + this.timeFrom, "YYYY-MM-DD HH:mm").format("YYYY-MM-DD HH:mm"),
+      EventBus.$emit("filterUpdated", {
+        to: moment(this.dateTo + " " + this.timeTo, "YYYY-MM-DD HH:mm").format(
+          "YYYY-MM-DD HH:mm"
+        ),
+        from: moment(
+          this.dateFrom + " " + this.timeFrom,
+          "YYYY-MM-DD HH:mm"
+        ).format("YYYY-MM-DD HH:mm"),
       });
-    }
-  }
+    },
+  },
 };
 </script>

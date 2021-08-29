@@ -11,23 +11,18 @@
 
 <script>
 import VueApexCharts from "vue-apexcharts";
-import Vue from "vue";
 import { EventBus } from "../../../main";
-import moment from "moment";
+
 export default {
   name: "SensorChart",
   components: {
     apexchart: VueApexCharts,
   },
-  props: ["sensorDatas", "terrariumId", "dateTimeFilters"],
+  props: ["sensorDatas"],
   data() {
     return {
       loading: true,
       toFilter: "",
-      fromFilter: "",
-
-      liveMode: false,
-      liveTimer: null,
 
       options: {
         chart: {
@@ -51,12 +46,7 @@ export default {
           },
         },
       },
-      series: [
-        {
-          name: "series-1",
-          data: [],
-        },
-      ],
+      series: [],
     };
   },
 
@@ -64,78 +54,62 @@ export default {
     let self = this;
 
     EventBus.$on("updateChart", (value) => {
-      if (value.onlyLast == undefined || !value.onlyLast) {
-        if (self.liveMode) {
-          self.liveMode = false;
-          clearInterval(self.liveTimer);
-          self.loading = false;
-        }else{
-          self.toFilter = value.to;
-          self.fromFilter = value.from;
-        }
-      } else if (value.onlyLast) {
-        self.startLiveChart();
-      }
-
-      self.getTerrariunDatas(value.from, value.to);
+      self.reloadAllData(value);
     });
-
-    self.toFilter = new Date().toISOString().substr(0, 10);
-    self.fromFilter = moment(
-      new Date().toISOString().substr(0, 10),
-      "YYYY-MM-DD"
-    )
-      .subtract(3, "months")
-      .format("YYYY-MM-DD");
-    self.getTerrariunDatas();
   },
   beforeDestroy() {
     EventBus.$off("updateChart");
-    if (this.liveMode) {
-      clearInterval(this.liveTimer);
-      this.loading = false;
-    }
   },
   methods: {
-    startLiveChart() {
-      let self = this;
-      self.liveMode = true;
-      self.loading = false;
-      this.liveTimer = setInterval(() => {
-        self.getTerrariunDatas();
-      }, 1000);
-    },
     reloadAllData(res) {
       let self = this;
-      let temp = [];
 
-      if (res.data.data == null) {
-        self.series = [
-          {
-            data: [],
-          },
-        ];
+      if (res.data == null) {
         self.loading = false;
+        self.series.forEach((el) => { el.data = [];});
         return;
       }
 
-      res.data.data.forEach((element) => {
-        temp.push({
-          x: element.Timestamp,
-          y: element.Value,
+      // different chart needed to be update
+      if (self.sensorDatas != null && res.key != null && res.key != self.sensorDatas.ID) {
+        return;
+      }
+
+      // update multi series chart
+      if (!res.liveMode && self.sensorDatas == null) {
+        self.loading = false;
+
+        let seriesName = "";
+
+        res.sensors.forEach((el) => {
+          if (el.ID == res.key) {
+            seriesName = el.TypeOfMeasure + " " + el.Extra_data;
+          }
         });
+
+        self.series.push({
+          data: res.data,
+          name: seriesName,
+        });
+        return;
+      }
+
+      // update series on mode live
+      if (res.liveMode) {
+        self.loading = false;
+        self.addDataToSerie(res.key, res.sensors, res.data);
+        return;
+      }
+
+      self.series.push({
+        data: res.data,
+        name:
+          self.sensorDatas.TypeOfMeasure +
+          " (" +
+          self.sensorDatas.Extra_data +
+          ")",
       });
 
-      self.series = [
-        {
-          data: temp,
-          name:
-            self.sensorDatas.TypeOfMeasure +
-            " (" +
-            self.sensorDatas.Extra_data +
-            ")",
-        },
-      ];
       self.$refs.sensorChart.updateOptions({
         yaxis: {
           title: {
@@ -149,49 +123,28 @@ export default {
       });
       self.loading = false;
     },
-    getTerrariunDatas() {
+    addDataToSerie(sensorKey, sensorsList, updateData) {
+      let seriesPos = 0;
+
       let self = this;
-      if (!self.liveMode) self.loading = true;
-
-      Vue.axios
-        .get(
-          "/data/measures/get?TerrariumID=" +
-            self.terrariumId +
-            "&From=" +
-            self.fromFilter +
-            "&To=" +
-            self.toFilter +
-            "&SensorID=" +
-            self.sensorDatas.ID +
-            "&LastUpdateOnly=" +
-            self.liveMode
-        )
-        .then((res) => {
-          console.log(res);
-
-          if (!self.liveMode) {
-            self.reloadAllData(res);
-          } else {
-            if (
-              self.series[0].data[self.series[0].data.length - 1].x !=
-              res.data.data[0].Timestamp
-            ) {
-              self.series[0].data.push({
-                x: res.data.data[0].Timestamp,
-                y: res.data.data[0].Value,
-              });
-
-              self.$refs.sensorChart.updateSeries([
-                {
-                  data: self.series[0].data,
-                },
-              ]);
-            }
+      if (self.sensorDatas == null) {
+        sensorsList.forEach((el, index) => {
+          if (el.ID == sensorKey) {
+           seriesPos = index;
           }
-        })
-        .catch((err) => {
-          self.loading = false;
         });
+      }
+      
+      let seriesNumElem = self.series[seriesPos].data.length;
+
+      if (
+        seriesNumElem  == 0 ||
+        self.series[seriesPos].data[seriesNumElem -1 ].x != updateData[0].x
+      ) {
+        self.series[seriesPos].data.push(updateData[0]);
+
+        self.$refs.sensorChart.updateSeries( self.series );
+      }
     },
   },
 };
