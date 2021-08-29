@@ -11,7 +11,6 @@
 
 <script>
 import VueApexCharts from "vue-apexcharts";
-import Vue from "vue";
 import { EventBus } from "../../../main";
 
 export default {
@@ -19,13 +18,22 @@ export default {
   components: {
     apexchart: VueApexCharts,
   },
-  props: ["sensorDatas", "terrariumId", "dateTimeFilters"],
+  props: ["sensorDatas"],
   data() {
     return {
       loading: true,
+      toFilter: "",
+
       options: {
         chart: {
           id: "vuechart-example",
+        },
+        animations: {
+          enabled: true,
+          easing: "linear",
+          dynamicAnimation: {
+            speed: 1000,
+          },
         },
         xaxis: {
           labels: {
@@ -38,12 +46,7 @@ export default {
           },
         },
       },
-      series: [
-        {
-          name: "series-1",
-          data: [],
-        },
-      ],
+      series: [],
     };
   },
 
@@ -51,70 +54,97 @@ export default {
     let self = this;
 
     EventBus.$on("updateChart", (value) => {
-      self.getTerrariunDatas(value.from, value.to);
+      self.reloadAllData(value);
     });
   },
-
+  beforeDestroy() {
+    EventBus.$off("updateChart");
+  },
   methods: {
-    getTerrariunDatas(from, to) {
+    reloadAllData(res) {
       let self = this;
-      self.loading = true;
-      let data = {
-        TerrariumId: self.terrariumId,
-        From: from,
-        To: to,
-        SensorId: self.sensorDatas.SensorID,
-      };
 
-      Vue.axios
-        .post("/data/measures/get", data)
-        .then((res) => {
-          console.log(res);
+      if (res.data == null) {
+        self.loading = false;
+        self.series.forEach((el) => { el.data = [];});
+        return;
+      }
 
-          let temp = [];
+      // different chart needed to be update
+      if (self.sensorDatas != null && res.key != null && res.key != self.sensorDatas.ID) {
+        return;
+      }
 
-          if (res.data == null) {
-            self.series = [
-              {
-                data: [],
-              },
-            ];
-            self.loading = false;
-            return;
+      // update multi series chart
+      if (!res.liveMode && self.sensorDatas == null) {
+        self.loading = false;
+
+        let seriesName = "";
+
+        res.sensors.forEach((el) => {
+          if (el.ID == res.key) {
+            seriesName = el.TypeOfMeasure + " " + el.Extra_data;
           }
-
-          res.data.forEach((element) => {
-            temp.push({
-              x: element.Timestamp,
-              y: element.Value,
-            });
-          });
-
-          self.series = [
-            {
-              data: temp,
-              name:
-                self.sensorDatas.TypeOfMeasure +
-                " (" +
-                self.sensorDatas.Extra_data +
-                ")",
-            },
-          ];
-          self.$refs.sensorChart.updateOptions({
-            yaxis: {
-              title: {
-                text: self.sensorDatas.TypeOfMeasure +
-                " (" +
-                self.sensorDatas.Extra_data +
-                ")",
-              },
-            },
-          });
-          self.loading = false;
-        })
-        .catch((err) => {
-          self.loading = false;
         });
+
+        self.series.push({
+          data: res.data,
+          name: seriesName,
+        });
+        return;
+      }
+
+      // update series on mode live
+      if (res.liveMode) {
+        self.loading = false;
+        self.addDataToSerie(res.key, res.sensors, res.data);
+        return;
+      }
+
+      self.series.push({
+        data: res.data,
+        name:
+          self.sensorDatas.TypeOfMeasure +
+          " (" +
+          self.sensorDatas.Extra_data +
+          ")",
+      });
+
+      self.$refs.sensorChart.updateOptions({
+        yaxis: {
+          title: {
+            text:
+              self.sensorDatas.TypeOfMeasure +
+              " (" +
+              self.sensorDatas.Extra_data +
+              ")",
+          },
+        },
+      });
+      self.loading = false;
+    },
+    addDataToSerie(sensorKey, sensorsList, updateData) {
+      let seriesPos = 0;
+
+      let self = this;
+      if (self.sensorDatas == null) {
+        sensorsList.forEach((el, index) => {
+          if (el.ID == sensorKey) {
+           seriesPos = index;
+          }
+        });
+      }
+      
+      let seriesNumElem = self.series[seriesPos].data.length;
+
+      if (
+        seriesNumElem  == 0 ||
+        self.series[seriesPos].data[seriesNumElem -1 ].x != updateData[0].x
+      ) {
+        self.series[seriesPos].data.push(updateData[0]);
+
+        self.$refs.sensorChart.updateSeries( self.series );
+      }
     },
   },
 };

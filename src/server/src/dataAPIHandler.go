@@ -1,7 +1,7 @@
 package main
 
 import (
-	"database/sql"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,8 +10,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/golang/gddo/httputil/header"
-	_ "github.com/mattn/go-sqlite3"
+	"github.com/gin-gonic/gin"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func jsonDecodeToStruct(p interface{}, w http.ResponseWriter, r *http.Request) (interface{}, error) {
@@ -68,76 +68,124 @@ func jsonDecodeToStruct(p interface{}, w http.ResponseWriter, r *http.Request) (
 }
 
 type measures_request_typ struct {
+	TerrariumID    string
+	From           string
+	To             string
+	SensorID       string //If not set -> all
+	SessionKey     string
+	LastUpdateOnly bool
+}
+
+func AddMeasure(c *gin.Context) {
+	dbConnection := c.MustGet("databaseConn").(*mongo.Database)
+	ctx := c.MustGet("databaseCtx").(context.Context)
+
+	var measures_input measures_data
+	if err := c.ShouldBindJSON(&measures_input); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, "Invalid json provided")
+		return
+	}
+	if len(measures_input.Data) == 0 {
+		c.JSON(http.StatusBadRequest, "Bad request")
+		return
+	}
+
+	err := insertMeasures(dbConnection, ctx, measures_input.Data)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, err.Error())
+		return
+	}
+}
+
+func RequestMeasures(c *gin.Context) {
+	dbConnection := c.MustGet("databaseConn").(*mongo.Database)
+	ctx := c.MustGet("databaseCtx").(context.Context)
+	var request measures_request_typ
+
+	if err := c.ShouldBind(&request); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, "Invalid query provided")
+		return
+	}
+	measures, err := getMeasures(dbConnection, request, ctx)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	c.JSON(200, gin.H{
+		"data": measures,
+	})
+
+}
+
+func Status(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"Status": "OK",
+	})
+}
+
+type startSessionRequest struct {
 	TerrariumID string
-	From        string
-	To          string
-	SensorID    string //If not set -> all
 }
 
-func AddMeasure(db *sql.DB) http.HandlerFunc {
+func StartSession(c *gin.Context) {
+	dbConnection := c.MustGet("databaseConn").(*mongo.Database)
+	ctx := c.MustGet("databaseCtx").(context.Context)
 
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("Content-Type") != "" {
-			value, _ := header.ParseValueAndParams(r.Header, "Content-Type")
-			if value != "application/json" {
-				msg := "Content-Type header is not application/json"
-				http.Error(w, msg, http.StatusUnsupportedMediaType)
-				return
-			}
-		}
-		var p measures_data
-		/*Decode json content*/
-		jsonDecodeToStruct(&p, w, r)
-		/*Data decoded*/
-		fmt.Fprintf(w, "Data: %+v", p)
-		/*Data insert into DB*/
-		for index := range p.Data {
-			t_data := p.Data[index]
-			if insertMeasureCheck(db, t_data) {
-				insertMeasure(db, t_data)
-			} else {
-				fmt.Fprintf(w, "\nTerrarium-sensor link error\n %+v - %+v", t_data.TerrariumID, t_data.SensorID)
-			}
-
-		}
+	var sessionRequest startSessionRequest
+	if err := c.ShouldBindJSON(&sessionRequest); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, "Invalid json provided")
+		return
 	}
+
+	sessionKey, err := createSession(dbConnection, ctx, sessionRequest.TerrariumID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, err)
+		return
+	}
+	c.JSON(200, gin.H{
+		"SessionKey": sessionKey,
+	})
 }
 
-func RequestMeasures(db *sql.DB) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("Content-Type") != "" {
-			value, _ := header.ParseValueAndParams(r.Header, "Content-Type")
-			if value != "application/json" {
-				msg := "Content-Type header is not application/json"
-				http.Error(w, msg, http.StatusUnsupportedMediaType)
-				return
-			}
-		}
-		var request measures_request_typ
-		/*Decode json content*/
-		jsonDecodeToStruct(&request, w, r)
-		/*Extract data and send back*/
-		measures := getMeasures(db, request)
-		/*Encode to json*/
-		message, err := json.Marshal(measures)
-		if err != nil {
-			http.Error(w, "", http.StatusInternalServerError)
-			log.Fatal(err.Error())
-		}
-		w.Write(message)
-	}
+type stopSessionRequest struct {
+	TerrariumID string
+	SessionKey  string
 }
 
-func RequestTerrariumsList(db *sql.DB) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		/*Extract data and send back*/
-		t_terrariums := getTerrariums(db)
-		/*Encode to json*/
-		message, err := json.Marshal(t_terrariums)
-		if err != nil {
-			http.Error(w, "", http.StatusInternalServerError)
-			log.Fatal(err.Error())
-		}
-		w.Write(message)
+func StopSession(c *gin.Context) {
+	dbConnection := c.MustGet("databaseConn").(*mongo.Database)
+	ctx := c.MustGet("databaseCtx").(context.Context)
+
+	var req stopSessionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, "Invalid json provided")
+		return
 	}
+
+	if err := stopSession(dbConnection, ctx, req.SessionKey, req.TerrariumID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err,
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"done": true,
+	})
+}
+
+func RequestTerrariumsList(c *gin.Context) {
+
+	dbConnection := c.MustGet("databaseConn").(*mongo.Database)
+	ctx := c.MustGet("databaseCtx").(context.Context)
+
+	/*Extract data and send back*/
+	t_terrariums := getTerrariums(dbConnection, ctx)
+
+	c.JSON(200, gin.H{
+		"data": t_terrariums,
+	})
+
 }
