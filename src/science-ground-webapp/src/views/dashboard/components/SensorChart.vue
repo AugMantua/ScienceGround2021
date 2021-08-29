@@ -18,7 +18,7 @@ export default {
   components: {
     apexchart: VueApexCharts,
   },
-  props: ["sensorDatas", "terrariumId", "dateTimeFilters"],
+  props: ["sensorDatas"],
   data() {
     return {
       loading: true,
@@ -46,12 +46,7 @@ export default {
           },
         },
       },
-      series: [
-        {
-          name: "series-1",
-          data: [],
-        },
-      ],
+      series: [],
     };
   },
 
@@ -61,7 +56,6 @@ export default {
     EventBus.$on("updateChart", (value) => {
       self.reloadAllData(value);
     });
-    
   },
   beforeDestroy() {
     EventBus.$off("updateChart");
@@ -71,48 +65,51 @@ export default {
       let self = this;
 
       if (res.data == null) {
-        self.$refs.sensorChart.updateSeries([
-          {
-            data: [],
-          },
-        ]);
         self.loading = false;
-         self.series[0].data = [];
+        self.series.forEach((el) => { el.data = [];});
         return;
       }
 
-      if (res.key != null && res.key != self.sensorDatas.ID) {
+      // different chart needed to be update
+      if (self.sensorDatas != null && res.key != null && res.key != self.sensorDatas.ID) {
+        return;
+      }
+
+      // update multi series chart
+      if (!res.liveMode && self.sensorDatas == null) {
         self.loading = false;
+
+        let seriesName = "";
+
+        res.sensors.forEach((el) => {
+          if (el.ID == res.key) {
+            seriesName = el.TypeOfMeasure + " " + el.Extra_data;
+          }
+        });
+
+        self.series.push({
+          data: res.data,
+          name: seriesName,
+        });
         return;
       }
 
       // update series on mode live
       if (res.liveMode) {
-        if (
-          self.series[0].data.length == 0 ||
-          self.series[0].data[self.series[0].data.length - 1].x != res.data[0].x
-        ) {
-          self.series[0].data.push(res.data[0]);
-
-          self.$refs.sensorChart.updateSeries([
-            {
-              data: self.series[0].data,
-            },
-          ]);
-        }
+        self.loading = false;
+        self.addDataToSerie(res.key, res.sensors, res.data);
         return;
       }
 
-      self.series = [
-        {
-          data: res.data,
-          name:
-            self.sensorDatas.TypeOfMeasure +
-            " (" +
-            self.sensorDatas.Extra_data +
-            ")",
-        },
-      ];
+      self.series.push({
+        data: res.data,
+        name:
+          self.sensorDatas.TypeOfMeasure +
+          " (" +
+          self.sensorDatas.Extra_data +
+          ")",
+      });
+
       self.$refs.sensorChart.updateOptions({
         yaxis: {
           title: {
@@ -125,6 +122,29 @@ export default {
         },
       });
       self.loading = false;
+    },
+    addDataToSerie(sensorKey, sensorsList, updateData) {
+      let seriesPos = 0;
+
+      let self = this;
+      if (self.sensorDatas == null) {
+        sensorsList.forEach((el, index) => {
+          if (el.ID == sensorKey) {
+           seriesPos = index;
+          }
+        });
+      }
+      
+      let seriesNumElem = self.series[seriesPos].data.length;
+
+      if (
+        seriesNumElem  == 0 ||
+        self.series[seriesPos].data[seriesNumElem -1 ].x != updateData[0].x
+      ) {
+        self.series[seriesPos].data.push(updateData[0]);
+
+        self.$refs.sensorChart.updateSeries( self.series );
+      }
     },
   },
 };

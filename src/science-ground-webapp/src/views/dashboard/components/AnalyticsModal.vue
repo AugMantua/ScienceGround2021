@@ -25,12 +25,16 @@
           <v-card elevation="0">
             <v-container style="border: thin solid #999999" elevation="1">
               <v-tabs v-model="tabs" center-active>
+                <v-tab key="0"  v-if="isOpen">{{"Dati incrociati"}}</v-tab>
                 <v-tab v-for="item in terrariumSensors" :key="item.ID">{{
                   item.TypeOfMeasure
                 }}</v-tab>
               </v-tabs>
 
               <v-tabs-items v-model="tabs">
+                <v-tab-item key="0">
+                 <sensorchart v-bind:terrariumId="terrariumId" v-bind:sensorDatas="null" v-if="isOpen"/>
+                </v-tab-item>
                 <v-tab-item
                   v-for="item in terrariumSensors"
                   :key="item.ID"
@@ -186,6 +190,7 @@ export default {
                 key: el,
                 data: temp[el],
                 liveMode: self.liveModeEnabled,
+                sensors: self.terrariumSensors
               });
             });
           }
