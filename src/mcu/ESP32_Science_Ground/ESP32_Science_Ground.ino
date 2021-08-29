@@ -55,7 +55,7 @@ const char* password = "prova123";
 #define RXD2 16
 #define TXD2 17
 #define BL 9
-#define NSEC 60
+#define NSEC 10
 
 // Set of commands for MH-Z19B
 // last byte is checksum, calculated as negation of the sum of all bytes except FF
@@ -240,7 +240,7 @@ void loop() { //Choose Serial1 or Serial2 as required
         } else {
           Serial.println("*** Got time");
           char buf[15];
-          strftime(buf, 15, "%Y%m%d%H%M%S", &timeinfo);
+          strftime(buf, 30, "%Y-%m-%d %H:%M:%S", &timeinfo);
           orario = (String) buf;
           Serial.println("Time:" + orario);
           stato_macchina = PREPARE_DATA;
@@ -312,7 +312,7 @@ void loop() { //Choose Serial1 or Serial2 as required
             String payload = http.getString();
             Serial.println(httpCode);
             Serial.println(payload);
-            stato_macchina = WAITING_RESPONSE;
+            stato_macchina = RESPONSE_OK;
           }
           else {
             Serial.println("Error on HTTP request");
@@ -331,7 +331,7 @@ void loop() { //Choose Serial1 or Serial2 as required
       {
         Serial.println("STATUS: WAITING_RESPONSE");
         skipResponseHeaders();
-                stato_macchina = RESPONSE_OK;
+        stato_macchina = RESPONSE_OK;
 
       }
       break;
@@ -375,10 +375,9 @@ void loop() { //Choose Serial1 or Serial2 as required
       {
         Serial.println("STATUS: ERRORE");
         if (WiFi.status() == WL_CONNECTED) {
-          stato_macchina = STANDBY;
-        } else {
-          Serial.println("Not connected to WiFi");
+          WiFi.disconnect();
         }
+        stato_macchina = STANDBY;
       }
       break;
 
