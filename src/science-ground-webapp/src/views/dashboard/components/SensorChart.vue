@@ -56,6 +56,9 @@ export default {
     EventBus.$on("updateChart", (value) => {
       self.reloadAllData(value);
     });
+     EventBus.$on("filterUpdated", (value) => {
+      self.loading = true;
+    });
   },
   beforeDestroy() {
     EventBus.$off("updateChart");
@@ -66,7 +69,7 @@ export default {
 
       if (res.data == null) {
         self.loading = false;
-        self.series.forEach((el) => { el.data = [];});
+        self.series = [];
         return;
       }
 
