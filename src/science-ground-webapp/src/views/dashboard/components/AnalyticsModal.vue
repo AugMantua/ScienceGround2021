@@ -64,7 +64,7 @@
           "
         >
           <timefilters />
-          <livefilters />
+          <livefilters  v-bind:liveStatus="liveModeEnabled"/>
         </v-col>
       </v-row>
     </v-card>
