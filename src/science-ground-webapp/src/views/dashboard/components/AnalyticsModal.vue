@@ -122,14 +122,11 @@ export default {
     EventBus.$on("filterUpdated", (value) => {
       if (value.onlyLast != undefined && !value.onlyLast) {
         self.liveModeEnabled = false;
+        self.clearChart();
         clearInterval(self.liveTimer);
       } else if (value.onlyLast != undefined && value.onlyLast) {
         self.liveModeEnabled = true;
-
-        EventBus.$emit("updateChart", {
-          data: null,
-        });
-
+        self.clearChart();
         self.startLiveChart();
       } else if (value.to != undefined && value.from != undefined) {
         self.getSensorsMeasures(value.from, value.to);
@@ -155,6 +152,11 @@ export default {
       this.liveTimer = setInterval(() => {
         self.getSensorsMeasures("", "");
       }, 5000);
+    },
+    clearChart(){
+        EventBus.$emit("updateChart", {
+          data: null,
+        });
     },
     getSensorsMeasures(from, to) {
       let self = this;
