@@ -220,10 +220,14 @@ func getMeasures(db *mongo.Database, request measures_request_typ, ctx context.C
 			return empty, err
 		}
 
-		for _, measure := range tempTerrarium.LastUpdate {
-			if measure.SensorID.Hex() == request.SensorID {
-				result = append(result, measure)
+		if request.SensorID != "" {
+			for _, measure := range tempTerrarium.LastUpdate {
+				if measure.SensorID.Hex() == request.SensorID {
+					result = append(result, measure)
+				}
 			}
+		} else {
+			result = tempTerrarium.LastUpdate
 		}
 
 	} else {
