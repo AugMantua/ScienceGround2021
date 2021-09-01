@@ -19,7 +19,7 @@
         <!-- GRAFICI -->
         <v-col
           :cols="!$vuetify.breakpoint.smAndDown ? '9' : '12'"
-          :class="!$vuetify.breakpoint.smAndDown ? 'mt-9' : ''"
+          :class="!$vuetify.breakpoint.smAndDown ? 'mt-4' : ''"
         >
           <v-card elevation="0">
             <v-container style="border: thin solid #999999" elevation="1">
@@ -58,7 +58,7 @@
           class="d-flex flex-column"
           :class="
             !$vuetify.breakpoint.smAndDown
-              ? 'mt-9 d-flex align-start'
+              ? 'mt-5 d-flex align-start'
               : 'mt-2 d-flex align-start'
           "
         >
