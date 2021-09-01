@@ -13,7 +13,7 @@ export default new Router({
       children: [
         // Dashboard
         {
-          name: 'Dashboard',
+          name: 'Science Ground',
           path: '',
           component: () => import('@/views/dashboard/Dashboard'),
         },
