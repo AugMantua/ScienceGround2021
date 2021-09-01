@@ -63,7 +63,7 @@
               : 'mt-2 d-flex align-start'
           "
         >
-          <timefilters />
+          <timefilters v-if="isOpen" />
           <livefilters  v-bind:liveStatus="liveModeEnabled"/>
         </v-col>
       </v-row>
@@ -134,6 +134,7 @@ export default {
         self.clearChart();
         self.startLiveChart();
       } else if (value.to != undefined && value.from != undefined) {
+        self.clearChart();
         self.getSensorsMeasures(value.from, value.to);
       }
     });

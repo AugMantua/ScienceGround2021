@@ -10,14 +10,21 @@
         <v-progress-circular indeterminate color="primary" />
       </v-container>
 
-      <v-layout row v-if="finishLoading">
-        <v-flex class="d-flex flex-row" v-for="item in items" :key="item.ID">
-          <terrarium v-bind:terrariumName="item.TerrariumAlias" v-bind:terrariumId="item.ID" v-bind:terrariumSensors="item.Sensors" v-bind:TypeOfTerrarium="item.TypeOfTerrarium"/>
-        </v-flex>
-      </v-layout>
+        <v-row id="container">
+          <v-col
+            v-for="item in items"
+            :key="item.ID"
+          > 
+             <terrarium v-bind:terrariumName="item.TerrariumAlias" v-bind:terrariumId="item.ID" v-bind:terrariumSensors="item.Sensors" v-bind:TypeOfTerrarium="item.TypeOfTerrarium"/>
+          </v-col>
+        </v-row>
+ 
     </div>
   </v-container>
 </template>
+
+
+
 
 <script>
 import Terrarium from "./components/Terrarium";
@@ -31,6 +38,7 @@ export default {
     return {
       items: [],
       finishLoading: false,
+      itemsPerRow: 4
     };
   },
   mounted() {
@@ -49,9 +57,3 @@ export default {
   },
 };
 </script>
-
-<style lang="sass" scoped>
-.mobileResize
-  width: 70%
-
-</style>
