@@ -63,8 +63,8 @@
               : 'mt-2 d-flex align-start'
           "
         >
-          <timefilters />
-          <livefilters />
+          <timefilters v-if="isOpen" />
+          <livefilters  v-bind:liveStatus="liveModeEnabled"/>
         </v-col>
       </v-row>
     </v-card>
@@ -127,15 +127,15 @@ export default {
     EventBus.$on("filterUpdated", (value) => {
       if (value.onlyLast != undefined && !value.onlyLast) {
         self.liveModeEnabled = false;
-        self.clearChart();
         this.liveTimer.stop();
       } else if (value.onlyLast != undefined && value.onlyLast) {
         self.liveModeEnabled = true;
-        self.clearChart();
         self.startLiveChart();
-      } else if (value.to != undefined && value.from != undefined) {
+      } else if (value.to != undefined && value.from != undefined) { 
         self.getSensorsMeasures(value.from, value.to);
       }
+      
+      self.clearChart();
     });
 
     this.liveTimer = new TaskTimer(1000);

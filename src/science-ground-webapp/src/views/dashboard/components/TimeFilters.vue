@@ -190,7 +190,6 @@ export default {
       );
     },
   },
-
   watch: {
     menuDateTo() {
       if (!this.menuDateTo && !this.validDateInsert) this.changeFilter();
