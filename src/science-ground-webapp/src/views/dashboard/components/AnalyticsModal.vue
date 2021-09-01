@@ -17,7 +17,6 @@
 
       <v-row no-gutters class="pa-1">
         <!-- GRAFICI -->
-
         <v-col
           :cols="!$vuetify.breakpoint.smAndDown ? '9' : '12'"
           :class="!$vuetify.breakpoint.smAndDown ? 'mt-9' : ''"
@@ -64,7 +63,34 @@
           "
         >
           <timefilters v-if="isOpen" />
-          <livefilters  v-bind:liveStatus="liveModeEnabled"/>
+          <livefilters v-bind:liveStatus="liveModeEnabled" />
+
+          <template >
+            <v-card outlined :class="!$vuetify.breakpoint.smAndDown ? 'ml-5 mt-2 justify-center' : 'mt-2 justify-center'"  elevation="0" style="border: thin solid #999999" :width="!$vuetify.breakpoint.smAndDown ? '80%' : '100%'"> 
+              <v-card-title outlined class="ma-0 pa-0">Sessioni Dimostrative</v-card-title>  
+              <v-list dense class="mb-1 mt-2 pa-0">
+                <v-list-item  style="width:100%">
+                  <v-list-item-group color="primary"> 
+                     <v-list-item v-for="(item, i) in terrariumSession" :key="i"  >
+                      <v-list-item-icon>
+                        <v-icon>mdi-access-point</v-icon>
+                      </v-list-item-icon>
+                      <v-list-item-content>
+                        <v-list-item-title class="font-weight-black" >Da: {{formatDate(item.TimestampStart)}} {{"                 "}} A: {{formatDate(item.TimestampEnd)}}</v-list-item-title>
+                      </v-list-item-content>
+                    </v-list-item>
+                  </v-list-item-group>
+                </v-list-item>
+              </v-list>
+            </v-card> 
+          </template>
+
+        </v-col>
+      </v-row>
+    </v-card>
+  </v-dialog>
+</template>
+
         </v-col>
       </v-row>
     </v-card>
@@ -96,7 +122,7 @@ export default {
       terrariumName: "",
       terrariumId: "",
       terrariumSensors: [],
-
+      terrariumSession:[],
       liveTimer: null,
       liveModeEnabled: false,
     };
@@ -110,6 +136,7 @@ export default {
       self.terrariumName = value.terrariumName;
       self.terrariumId = value.terrariumId;
       self.terrariumSensors = value.sensorsData;
+      self.terrariumSession = value.Sessions;
 
       let toFilter = new Date().toISOString().substr(0, 10);
       let fromFilter = moment(
@@ -131,10 +158,10 @@ export default {
       } else if (value.onlyLast != undefined && value.onlyLast) {
         self.liveModeEnabled = true;
         self.startLiveChart();
-      } else if (value.to != undefined && value.from != undefined) { 
+      } else if (value.to != undefined && value.from != undefined) {
         self.getSensorsMeasures(value.from, value.to);
       }
-      
+
       self.clearChart();
     });
 
@@ -156,6 +183,12 @@ export default {
       this.isOpen = false;
       this.liveModeEnabled = false;
       this.liveTimer.stop();
+    },
+    formatDate(date){
+      if(date == "")
+        return "--/--/--/ --:--";
+
+      return moment(date).format("YYYY/MM/DD HH:mm")
     },
     startLiveChart() {
       let self = this;

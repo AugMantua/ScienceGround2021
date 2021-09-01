@@ -15,9 +15,9 @@
             src="../../../assets/18868_3PVyaYryNQAN.png"
           >
           </v-img>
-          <v-card-title class="d-inline-block text-truncate text-center">{{ terrariumName }}</v-card-title>
+          <v-card-title class="d-inline-block text-truncate text-center">{{ terrarium.TerrariumAlias }}</v-card-title>
           <v-card-subtitle style="margin-top:1px">
-            <p class="mb-1">{{"Tipo: " + TypeOfTerrarium}}</p>
+            <p class="mb-1">{{"Tipo: " + terrarium.TypeOfTerrarium}}</p>
             <p class="mb-1">{{"Ultima sincronizzazione: " + "11/11/2021 11:20"}}</p>
           </v-card-subtitle>
          
@@ -32,7 +32,7 @@ import { EventBus } from "../../../main";
 export default {
   name: "Terrarim",
   components: {},
-  props: ["terrariumName", "terrariumId", "terrariumSensors", "TypeOfTerrarium"],
+  props: ["terrarium"],
   data() {
     return {};
   },
@@ -42,9 +42,10 @@ export default {
       let self = this;
       EventBus.$emit("changeDialogState", {
         visibility: true,
-        terrariumName: self.terrariumName,
-        terrariumId: self.terrariumId,
-        sensorsData: self.terrariumSensors
+        terrariumName: self.terrarium.TerrariumAlias,
+        terrariumId: self.terrarium.ID,
+        sensorsData: self.terrarium.Sensors,
+        Sessions: self.terrarium.Sessions
       });
     },
   },
