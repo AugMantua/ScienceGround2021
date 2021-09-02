@@ -212,7 +212,7 @@ export default {
       let self = this;
 
       let sk = "";
-      if(self.selectedSession != undefined && self.selectedSession != -1 && self.terrariumSession.length  > 0)
+      if(self.selectedSession != undefined && self.selectedSession != -1 && self.terrariumSession?.length  > 0)
         sk = self.terrariumSession[self.selectedSession].SessionKey;
 
       Vue.axios
