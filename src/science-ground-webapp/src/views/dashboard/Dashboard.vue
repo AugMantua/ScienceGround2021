@@ -15,7 +15,7 @@
             v-for="item in items"
             :key="item.ID"
           > 
-             <terrarium v-bind:terrariumName="item.TerrariumAlias" v-bind:terrariumId="item.ID" v-bind:terrariumSensors="item.Sensors" v-bind:TypeOfTerrarium="item.TypeOfTerrarium"/>
+             <terrarium v-bind:terrarium="item"/>
           </v-col>
         </v-row>
  
