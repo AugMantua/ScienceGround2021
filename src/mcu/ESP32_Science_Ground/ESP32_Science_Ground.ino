@@ -12,8 +12,6 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h> //v6
 
-#define ARDUINO_RUNNING_CORE 0
-
 WiFiClient client;
 HTTPClient http;
 
@@ -99,15 +97,15 @@ float dew_pointC;
 float RH;
 int CO2;
 
-//const char* server = "lucacarre2400.ddns.net";  // server's address
-const char* server = "192.168.22.90";  // server's address
-const int serverPort = 8080;                    // server port
-const char* resource = "/data/measures/add";    // resource requested
-const char* login = "/devices/auth";            // auth API
+//const char* server = "lucacarre2400.ddns.net";    // server's address
+const char* server = "192.168.47.90";               // server's address
+const int serverPort = 8080;                        // server port
+const char* resource = "/data/measures/add";        // resource requested
+const char* login = "/devices/auth";                // auth API
 const char* startSession = "/data/terrariums/sessions/start"; //start session API
-StaticJsonDocument<1024> authResponse;          // global var -> used in the main loop to extract login infos
+StaticJsonDocument<1024> authResponse;              // global var -> used in the main loop to extract login infos
 StaticJsonDocument<512> sessionApiResponse;
-String globalSession;                      // global session
+String globalSession;                               // global session
 //const char* resource = "/data/terrariums/get";    // resource requested
 
 int i = 0;
@@ -125,10 +123,12 @@ bool tryAuth(String*,int *);
 bool startSessionFlag = false;
 bool stopSessionFlag = false;
 bool _SESSION_ACTIVE = false;
+bool _FAST_MODE_ACTIVE = false;
 
 // Start 
 void IRAM_ATTR startNewSession_ISR()
 {
+    Serial.println("Start new session interrupt");
     startSessionFlag = true;
     stopSessionFlag = false;
 }
@@ -145,8 +145,6 @@ void IRAM_ATTR stopSession_ISR()
 #define GPIO_STOP_SESSION_LED 26
 #define GPIO_FAST_MODE 19
 #define GPIO_FAST_MODE_LED 18
-
-#define ESP32NULL ((void *)0)
 
 
 bool ledFlag = false;
@@ -226,11 +224,12 @@ void mainTask(void *you_need_this){
           Serial.print("Concentrazione CO2: ");
           Serial.println((String)CO2);
           if(startSessionFlag){
-            if(requestNewSession(&terrariumID,&session_state)){
-              stato_macchina = MEASURING_SHT_20; 
+            if(requestNewSession(authResponse["ID"].as<String>(),&session_state)){
+              startSessionFlag = false;
+              stato_macchina = WIFI_CONNECTING; 
             }
           }
-          stato_macchina = WIFI_CONNECTING;
+          //stato_macchina = WIFI_CONNECTING;
         }
         break;
   
@@ -400,7 +399,8 @@ void mainTask(void *you_need_this){
       case (STANDBY):                     // Status used when MCU goes to standby (actually this can be better, by using deep sleep and so on)
         {
           if (standby) {
-            if (millis() - start > (1000 * NSEC) ) {
+            int cycleTime = _FAST_MODE_ACTIVE ? 2 : NSEC;
+            if (millis() - start > (1000 * cycleTime) ) {
               standby = false;
               stato_macchina = MEASURING_SHT_20;
             }
@@ -802,7 +802,7 @@ bool tryAuth(String* _terrariumId, int* auth_step){
 
 String SessionResponse;
 
-bool requestNewSession(String* _terrariumId, int* session_step){
+bool requestNewSession(String _terrariumId, int* session_step){
 
   switch(*session_step){
 
@@ -828,9 +828,10 @@ bool requestNewSession(String* _terrariumId, int* session_step){
     {
       Serial.println("STATUS: CREATE_REQUEST");
       StaticJsonDocument<512> doc;
+
+      postMessage = "";
       
-      
-      doc["TerrariumID"] = *_terrariumId;
+      doc["TerrariumID"] = _terrariumId;
 
       serializeJson(doc, postMessage);
       serializeJson(doc, Serial);
