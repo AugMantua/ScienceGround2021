@@ -166,7 +166,9 @@ export default {
       self.getSensorsMeasures();
     });
 
-    EventBus.$on("filterUpdated", (value) => {
+    EventBus.$on("filterUpdated", (value) => { 
+       self.clearChart();
+      
       if (value.onlyLast != undefined && !value.onlyLast) {
         self.liveModeEnabled = false;
         this.liveTimer.stop();
@@ -179,7 +181,7 @@ export default {
         self.getSensorsMeasures();
       }
 
-      self.clearChart();
+    
     });
 
     this.liveTimer = new TaskTimer(1000);
