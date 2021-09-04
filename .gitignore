@@ -6,3 +6,4 @@ src/server/src/__debug_bin
 src/server/.env
 src/server/.env.dev
 src/__debug_bin
+src/server/src/.env

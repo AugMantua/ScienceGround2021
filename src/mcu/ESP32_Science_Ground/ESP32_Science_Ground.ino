@@ -49,6 +49,7 @@ char response[800]; // this fixed sized buffers works well for this project usin
 
 int stato_macchina = INIT;
 int auth_state = 0;
+int session_state = 0;
 const char* ssid     = "Pie";
 const char* password = "prova123";
 
@@ -101,7 +102,10 @@ const char* server = "192.168.22.90";  // server's address
 const int serverPort = 8080;                    // server port
 const char* resource = "/data/measures/add";    // resource requested
 const char* login = "/devices/auth";            // auth API
+const char* startSession = "/data/terrariums/sessions/start"; //start session API
 StaticJsonDocument<1024> authResponse;          // global var -> used in the main loop to extract login infos
+StaticJsonDocument<512> sessionApiResponse;
+String globalSession;                      // global session
 //const char* resource = "/data/terrariums/get";    // resource requested
 
 int i = 0;
@@ -116,6 +120,29 @@ void sendCmdToMhz19(char *);
 char getCheckSum(char *);
 bool tryAuth(String*,int *);
 
+bool startSessionFlag = false;
+bool stopSessionFlag = false;
+
+// Start 
+void IRAM_ATTR startNewSession_ISR()
+{
+    startSessionFlag = true;
+    stopSessionFlag = false;
+}
+
+void IRAM_ATTR stopSession_ISR()
+{
+    startSessionFlag = false;
+    stopSessionFlag = true;
+}
+
+#define GPIO_START_SESSION 12
+#define GPIO_START_SESSION_LED 14
+#define GPIO_STOP_SESSION 27
+#define GPIO_STOP_SESSION_LED 26
+#define GPIO_FAST_MODE 19
+#define GPIO_FAST_MODE_LED 18
+
 void setup() {
   Serial.begin(115200);                         // Seriale standard per la comunicazione di debug
   Serial2.begin(9600, SERIAL_8N1, RXD2, TXD2);  // Seriale 2 usata per connettersi al sensore MH-Z19B
@@ -127,7 +154,18 @@ void setup() {
   sendCmdToMhz19(buf);
   cmdSent = false;                              // ready to process new commands on MH-Z19B (to be changed, absorbed by state machine) 
   client.setTimeout(HTTP_TIMEOUT);              // set Client timeout
+  /* Buttons interrupts */
+  pinMode(GPIO_START_SESSION, INPUT);                       // Start session  - button
+  pinMode(GPIO_START_SESSION_LED, OUTPUT);                  // Start session  - led
+  pinMode(GPIO_STOP_SESSION, INPUT);                        // Stop session   - button
+  pinMode(GPIO_STOP_SESSION_LED, OUTPUT);                   // Stop session   - led
+  pinMode(GPIO_FAST_MODE, INPUT);                           // Fast-mode      - switch
+  pinMode(GPIO_FAST_MODE_LED, OUTPUT);                      // Fast-mode      - led
+  attachInterrupt(GPIO_START_SESSION, startNewSession_ISR, RISING);
+  attachInterrupt(GPIO_STOP_SESSION, stopSession_ISR, RISING);
 }
+
+
 
 void loop() { //Choose Serial1 or Serial2 as required
   switch (stato_macchina) {
@@ -190,6 +228,11 @@ void loop() { //Choose Serial1 or Serial2 as required
         CO2 = resp[2] * 256 + resp[3];
         Serial.print("Concentrazione CO2: ");
         Serial.println((String)CO2);
+        if(startSessionFlag){
+          if(requestNewSession(&terrariumID,&session_state)){
+            stato_macchina = MEASURING_SHT_20; 
+          }
+        }
         stato_macchina = WIFI_CONNECTING;
       }
       break;
@@ -261,35 +304,35 @@ void loop() { //Choose Serial1 or Serial2 as required
         Data_Temp["SensorID"] = authResponse["Sensors"]["Temperature_1"]["ID"];
         Data_Temp["Value"] = (String)tempC;
         Data_Temp["Timestamp"] = (String)orario;
-        Data_Temp["SessionKey"] = "";
+        Data_Temp["SessionKey"] = globalSession;
 
         JsonObject Data_Rugiada = Data.createNestedObject();
         Data_Rugiada["TerrariumID"] = authResponse["ID"];
         Data_Rugiada["SensorID"] = authResponse["Sensors"]["PuntoRugiada_1"]["ID"];
         Data_Rugiada["Value"] = (String)dew_pointC;
         Data_Rugiada["Timestamp"] = (String)orario;
-        Data_Rugiada["SessionKey"] = "";
+        Data_Rugiada["SessionKey"] = globalSession;
 
         JsonObject Data_Umid = Data.createNestedObject();
         Data_Umid["TerrariumID"] = authResponse["ID"];
         Data_Umid["SensorID"] = authResponse["Sensors"]["Humid_1"]["ID"];
         Data_Umid["Value"] = (String)RH;
         Data_Umid["Timestamp"] = (String)orario;
-        Data_Umid["SessionKey"] = "";
+        Data_Umid["SessionKey"] = globalSession;
 
         JsonObject Data_VPD = Data.createNestedObject();
         Data_VPD["TerrariumID"] = authResponse["ID"];
         Data_VPD["SensorID"] = authResponse["Sensors"]["VPD_1"]["ID"];
         Data_VPD["Value"] = (String)vpd_kPa;
         Data_VPD["Timestamp"] = (String)orario;
-        Data_VPD["SessionKey"] = "";
+        Data_VPD["SessionKey"] = globalSession;
 
         JsonObject Data_CO2 = Data.createNestedObject();
         Data_CO2["TerrariumID"] = authResponse["ID"];
         Data_CO2["SensorID"] = authResponse["Sensors"]["CO2_1"]["ID"];
         Data_CO2["Value"] = (String)CO2;
         Data_CO2["Timestamp"] = (String)orario;
-        Data_CO2["SessionKey"] = "";
+        Data_CO2["SessionKey"] = globalSession;
 
         postMessage = "";
         serializeJson(doc, postMessage);
@@ -551,12 +594,14 @@ bool skipResponseHeaders() {
 #define AUTH_CLOSE 7
 
 #define _TYPE_OF_TERRARIUM "Terrain"
-#define _TERRARIUM_ALIAS "ScienceGround2021_Test"
+#define _TERRARIUM_ALIAS "Lorenzo's Terrarium"
 #define _MAGIC_KEY "InmfNpOwCSJJhXbUnptbK5c9tdGb4CnDdPrx9WWSlu9FNELGKMfpCpAifJSpbMSHMxgN7IxKmyFlFmnF6dhF3dr3h4vnVGAze9Cpqf1z3dpIY5U37jbpmZqhNv09AaxK6WqIc3CqgYQRs7ROGWuTzBZ9vX2AVoATX0Nz0hixb9iuxUfCTRE8BqDmyhknYGWTGKubF2HuMcAsytgyL47pNiFMPcSMksBUm1hmA5EMSjSq91cjz3w2sJPldAezdZBV"
 
 #define TRY_BACK_TIME 300 // 5 minutes
 
 String loginResponse;
+String sessionResponse;
+String session; 
 
 bool tryAuth(String* _terrariumId, int* auth_step){
 
@@ -692,4 +737,127 @@ bool tryAuth(String* _terrariumId, int* auth_step){
       break;
   }
   
+}
+
+
+
+/* 
+ * Request for a new session
+ */
+#define SESSION_START_CONNECTION 0
+#define SESSION_CREATE_REQUEST 1
+#define SEND_SESSION_REQ 2
+#define SESSION_WAIT_RESPONSE 3
+#define SESSION_CHECK_RESPONSE 4
+#define SESSION_DISCONNECT 5
+#define SESSION__ERROR 255
+#define SESSION_STANDBY 6
+#define SESSION_CLOSE 7
+
+String SessionResponse;
+
+bool requestNewSession(String* _terrariumId, int* session_step){
+
+  switch(*session_step){
+
+    case SESSION_START_CONNECTION: // start connecion
+    {
+      Serial.println("STATUS: WIFI_CONNECTING");
+      WiFi.begin(ssid, password);
+      int counter = 0;
+      Serial.print("Connecting to ");
+      Serial.print(ssid);
+      while (WiFi.status() != WL_CONNECTED) {
+        delay(500);
+        Serial.print(".");
+      }
+      Serial.println("");
+      WiFi.macAddress(mac);
+      *session_step = SESSION_CREATE_REQUEST;
+      return false;
+      break;
+    }
+
+    case SESSION_CREATE_REQUEST:
+    {
+      Serial.println("STATUS: CREATE_REQUEST");
+      StaticJsonDocument<512> doc;
+      
+      
+      doc["TerrariumID"] = *_terrariumId;
+
+      serializeJson(doc, postMessage);
+      serializeJson(doc, Serial);
+
+      *session_step = SEND_LOGIN_REQ;
+      return false;
+      break;
+    }
+
+    case SEND_SESSION_REQ:
+    {
+
+      Serial.println("STATUS: SEND START SESSION REQUEST");
+      if (WiFi.status() == WL_CONNECTED) { //Check WiFi connection status
+        String URI = (String)"http://" + (String)server + (String)":" + (String)serverPort + (String)startSession;
+        Serial.println("Connecting to " + URI);
+        http.begin(URI); //Specify destination for HTTP request
+        http.addHeader("Content-Type", "application/json");
+        int httpCode = http.POST(postMessage);
+        if (httpCode > 0) { //Check for the returning code
+          sessionResponse = http.getString();
+          Serial.println(httpCode);
+          Serial.println(sessionResponse);
+          *session_step = SESSION_CHECK_RESPONSE;
+        }
+        else {
+          Serial.println("Error on HTTP request");
+          Serial.println(httpCode);
+          *session_step = _ERROR;
+        }
+      } else {
+        Serial.println("Lost connection");
+        *session_step = _ERROR;
+      }
+      return false;
+      break;
+    }
+
+    case _ERROR:
+    {
+      if (WiFi.status() == WL_CONNECTED){
+        WiFi.disconnect();
+      }
+      Serial.println("Error, try again");
+      *session_step = SESSION_START_CONNECTION;
+      delay(TRY_BACK_TIME*1000);
+      break;
+    }
+
+    case (SESSION_CHECK_RESPONSE):               // Status used when response received from the server that collects measurements is OK
+      {
+        Serial.println("STATUS: RESPONSE_OK");
+        Serial.println(sessionResponse);
+        if (!client.connected()) {
+          Serial.println();
+          Serial.println("disconnecting http client...");
+          client.stop();
+        }
+        deserializeJson(sessionApiResponse, sessionResponse);
+        globalSession = sessionApiResponse["SessionKey"].as<String>();
+        Serial.println(globalSession);
+        *session_step = SESSION_CLOSE;
+      }
+      return false;
+      break;
+
+      case (SESSION_CLOSE):                     // Status used when disconnecting from the Wi-Fi network
+        {
+          Serial.println("STATUS: AUTH_CLOSE");
+          if (WiFi.status() == WL_CONNECTED){
+            WiFi.disconnect();
+          }
+          return true;
+        }
+  }
 }
