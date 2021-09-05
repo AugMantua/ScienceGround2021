@@ -226,10 +226,10 @@ void mainTask(void *you_need_this){
           if(startSessionFlag){
             if(requestNewSession(authResponse["ID"].as<String>(),&session_state)){
               startSessionFlag = false;
-              stato_macchina = WIFI_CONNECTING; 
             }
+          }else{
+            stato_macchina = WIFI_CONNECTING;
           }
-          //stato_macchina = WIFI_CONNECTING;
         }
         break;
   
