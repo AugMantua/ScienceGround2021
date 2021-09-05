@@ -49,6 +49,7 @@ char response[800]; // this fixed sized buffers works well for this project usin
 
 int stato_macchina = INIT;
 int auth_state = 0;
+int session_state = 0;
 const char* ssid     = "Pie";
 const char* password = "prova123";
 
@@ -96,12 +97,15 @@ float dew_pointC;
 float RH;
 int CO2;
 
-//const char* server = "lucacarre2400.ddns.net";  // server's address
-const char* server = "192.168.22.90";  // server's address
-const int serverPort = 8080;                    // server port
-const char* resource = "/data/measures/add";    // resource requested
-const char* login = "/devices/auth";            // auth API
-StaticJsonDocument<1024> authResponse;          // global var -> used in the main loop to extract login infos
+//const char* server = "lucacarre2400.ddns.net";    // server's address
+const char* server = "192.168.47.90";               // server's address
+const int serverPort = 8080;                        // server port
+const char* resource = "/data/measures/add";        // resource requested
+const char* login = "/devices/auth";                // auth API
+const char* startSession = "/data/terrariums/sessions/start"; //start session API
+StaticJsonDocument<1024> authResponse;              // global var -> used in the main loop to extract login infos
+StaticJsonDocument<512> sessionApiResponse;
+String globalSession;                               // global session
 //const char* resource = "/data/terrariums/get";    // resource requested
 
 int i = 0;
@@ -116,6 +120,315 @@ void sendCmdToMhz19(char *);
 char getCheckSum(char *);
 bool tryAuth(String*,int *);
 
+bool startSessionFlag = false;
+bool stopSessionFlag = false;
+bool _SESSION_ACTIVE = false;
+bool _FAST_MODE_ACTIVE = false;
+
+// Start 
+void IRAM_ATTR startNewSession_ISR()
+{
+    Serial.println("Start new session interrupt");
+    startSessionFlag = true;
+    stopSessionFlag = false;
+}
+
+void IRAM_ATTR stopSession_ISR()
+{
+    startSessionFlag = false;
+    stopSessionFlag = true;
+}
+
+#define GPIO_START_SESSION 12
+#define GPIO_START_SESSION_LED 14
+#define GPIO_STOP_SESSION 27
+#define GPIO_STOP_SESSION_LED 26
+#define GPIO_FAST_MODE 19
+#define GPIO_FAST_MODE_LED 18
+
+
+bool ledFlag = false;
+
+void ledTask(void *you_need_this){
+  for(;;){
+    if(_SESSION_ACTIVE){
+      ledFlag = !ledFlag;
+      digitalWrite(GPIO_START_SESSION_LED,ledFlag);
+    }else{
+      digitalWrite(GPIO_START_SESSION_LED,false);
+    }
+  }
+  delay(1000);
+}
+
+void mainTask(void *you_need_this){
+  for(;;){
+    switch (stato_macchina) {
+      case (INIT):                                    // Initial status
+        {
+          Serial.println("STATUS: INIT");
+        }
+        stato_macchina = API_AUTH;
+        break;
+  
+      case (API_AUTH): // Try login to server before start loop
+      {
+       if(tryAuth(&terrariumID,&auth_state)){
+        stato_macchina = MEASURING_SHT_20; 
+       }
+        break;
+      }
+  
+      case (MEASURING_SHT_20):                    // Status used for collecting measurements from SHT20
+        {
+          Serial.println("--------------------------");
+          Serial.println("STATUS: MEASURING_SHT_20");
+          shtMeasure_all();
+          Serial.println("Temperatura: " + (String)tempC + "°C");
+          Serial.println("Punto di rugiada: " + (String)dew_pointC + "°C dew point");
+          Serial.println("Umidita' relativa: " + (String)RH + " %");
+          Serial.println("deficit di pressione di vapore: " + (String)vpd_kPa + " kPa");
+          stato_macchina = REQUEST_MH_Z19B;
+        }
+        break;
+  
+      case (REQUEST_MH_Z19B):                     // Status used for requesting measurements from MH-Z19B
+        {
+          Serial.println("STATUS: REQUEST_MH_Z19B");
+          byte buf[BL] = CMD_READCO2;
+          sendCmdToMhz19(buf);
+          stato_macchina = RECEIVING_MH_Z19B;
+          Serial.println("STATUS: RECEIVING_MH_Z19B");
+        }
+        break;
+  
+      case (RECEIVING_MH_Z19B):                   // Status used for waiting measurements from MH-Z19B
+        {
+          while ( cmdSent && Serial2.available() > 0 ) {
+            resp[i] = int(Serial2.read());
+            i++;
+            if (i > 8) {
+              i = 0;
+              cmdSent = false;
+              start = millis();
+              stato_macchina = RECEIVED_MH_Z19B;
+            }
+          }
+        }
+        break;
+  
+      case (RECEIVED_MH_Z19B):                    // Status used to print measurements from MH-Z19B
+        {
+          Serial.println("STATUS: RECEIVED_MH_Z19B");
+          CO2 = resp[2] * 256 + resp[3];
+          Serial.print("Concentrazione CO2: ");
+          Serial.println((String)CO2);
+          if(startSessionFlag){
+            if(requestNewSession(authResponse["ID"].as<String>(),&session_state)){
+              startSessionFlag = false;
+            }
+          }else{
+            stato_macchina = WIFI_CONNECTING;
+          }
+        }
+        break;
+  
+      case (WIFI_CONNECTING):                     // Status used to connect to a known Wi-Fi network
+        {
+          Serial.println("STATUS: WIFI_CONNECTING");
+          WiFi.begin(ssid, password);
+          int counter = 0;
+          Serial.print("Connecting to ");
+          Serial.print(ssid);
+          while (WiFi.status() != WL_CONNECTED) {
+            delay(500);
+            Serial.print(".");
+          }
+          Serial.println("");
+          stato_macchina = WIFI_CONNECTED;
+        }
+        break;
+  
+      case (WIFI_CONNECTED):                     // Status used when connection has been established to a Wi-Fi network
+        {
+          Serial.println("STATUS: WIFI_CONNECTED");
+          Serial.print("IP address: ");
+          Serial.println(WiFi.localIP());
+          stato_macchina = NTP_GET_TIME;
+        }
+        break;
+  
+      case (NTP_GET_TIME):                  // Status used to init NTP client
+        {
+          Serial.println("STATUS: NTP_GET_TIME");
+          configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+  
+          stato_macchina = NTP_GOT_TIME;
+        }
+        break;
+  
+      case (NTP_GOT_TIME):                  // Status used to get time from NTP server
+        {
+          Serial.println("STATUS: NTP_GOT_TIME");
+          // Init and get the time
+          struct tm timeinfo;
+          if (!getLocalTime(&timeinfo)) {
+            Serial.println("*** Failed to obtain time");
+            stato_macchina = NTP_GET_TIME;
+            return;
+          } else {
+            Serial.println("*** Got time");
+            char buf[15];
+            strftime(buf, 30, "%Y-%m-%d %H:%M:%S", &timeinfo);
+            orario = (String) buf;
+            Serial.println("Time:" + orario);
+            stato_macchina = PREPARE_DATA;
+          }
+        }
+        break;
+  
+      case (PREPARE_DATA):                  // Status used to start connecting to the server that collects measurements
+        {
+          Serial.println("STATUS: PREPARE_DATA");
+          StaticJsonDocument<768> doc;
+  
+        
+          JsonArray Data = doc.createNestedArray("Data");
+  
+          JsonObject Data_Temp = Data.createNestedObject();
+          Data_Temp["TerrariumID"] = authResponse["ID"];
+          Data_Temp["SensorID"] = authResponse["Sensors"]["Temperature_1"]["ID"];
+          Data_Temp["Value"] = (String)tempC;
+          Data_Temp["Timestamp"] = (String)orario;
+          Data_Temp["SessionKey"] = globalSession;
+  
+          JsonObject Data_Rugiada = Data.createNestedObject();
+          Data_Rugiada["TerrariumID"] = authResponse["ID"];
+          Data_Rugiada["SensorID"] = authResponse["Sensors"]["PuntoRugiada_1"]["ID"];
+          Data_Rugiada["Value"] = (String)dew_pointC;
+          Data_Rugiada["Timestamp"] = (String)orario;
+          Data_Rugiada["SessionKey"] = globalSession;
+  
+          JsonObject Data_Umid = Data.createNestedObject();
+          Data_Umid["TerrariumID"] = authResponse["ID"];
+          Data_Umid["SensorID"] = authResponse["Sensors"]["Humid_1"]["ID"];
+          Data_Umid["Value"] = (String)RH;
+          Data_Umid["Timestamp"] = (String)orario;
+          Data_Umid["SessionKey"] = globalSession;
+  
+          JsonObject Data_VPD = Data.createNestedObject();
+          Data_VPD["TerrariumID"] = authResponse["ID"];
+          Data_VPD["SensorID"] = authResponse["Sensors"]["VPD_1"]["ID"];
+          Data_VPD["Value"] = (String)vpd_kPa;
+          Data_VPD["Timestamp"] = (String)orario;
+          Data_VPD["SessionKey"] = globalSession;
+  
+          JsonObject Data_CO2 = Data.createNestedObject();
+          Data_CO2["TerrariumID"] = authResponse["ID"];
+          Data_CO2["SensorID"] = authResponse["Sensors"]["CO2_1"]["ID"];
+          Data_CO2["Value"] = (String)CO2;
+          Data_CO2["Timestamp"] = (String)orario;
+          Data_CO2["SessionKey"] = globalSession;
+  
+          postMessage = "";
+          serializeJson(doc, postMessage);
+          serializeJson(doc, Serial);
+          stato_macchina = SEND_DATA;
+  
+        }
+        break;
+  
+      case (SEND_DATA):                  // Status used to start connecting to the server that collects measurements
+        {
+          Serial.println("STATUS: SEND_DATA");
+          if (WiFi.status() == WL_CONNECTED) { //Check WiFi connection status
+            String URI = (String)"http://" + (String)server + (String)":" + (String)serverPort + (String)resource;
+            Serial.println("Connecting to " + URI);
+            http.begin(URI); //Specify destination for HTTP request
+            http.addHeader("Content-Type", "application/json");
+            int httpCode = http.POST(postMessage);
+            if (httpCode > 0) { //Check for the returning code
+              String payload = http.getString();
+              Serial.println(httpCode);
+              Serial.println(payload);
+              stato_macchina = RESPONSE_OK;
+            }
+            else {
+              Serial.println("Error on HTTP request");
+              Serial.println(httpCode);
+              stato_macchina = ERRORE;
+            }
+          } else {
+            Serial.println("Lost connection");
+            stato_macchina = ERRORE;
+          }
+        }
+        break;
+  
+  
+      case (WAITING_RESPONSE):               // Status used when waiting for a response from the server that collects measurements
+        {
+          Serial.println("STATUS: WAITING_RESPONSE");
+          skipResponseHeaders();
+          stato_macchina = RESPONSE_OK;
+  
+        }
+        break;
+  
+      case (RESPONSE_OK):               // Status used when response received from the server that collects measurements is OK
+        {
+          Serial.println("STATUS: RESPONSE_OK");
+          Serial.println(response);
+          if (!client.connected()) {
+            Serial.println();
+            Serial.println("disconnecting http client...");
+            client.stop();
+          }
+          stato_macchina = WIFI_DISCONNECT;
+        }
+        break;
+  
+      case (WIFI_DISCONNECT):                     // Status used when disconnecting from the Wi-Fi network
+        {
+          Serial.println("STATUS: WIFI_DISCONNECT");
+          WiFi.disconnect();
+          stato_macchina = STANDBY;
+        }
+        break;
+  
+      case (STANDBY):                     // Status used when MCU goes to standby (actually this can be better, by using deep sleep and so on)
+        {
+          if (standby) {
+            int cycleTime = _FAST_MODE_ACTIVE ? 2 : NSEC;
+            if (millis() - start > (1000 * cycleTime) ) {
+              standby = false;
+              stato_macchina = MEASURING_SHT_20;
+            }
+          } else {
+            Serial.println("STATUS: STANDBY");
+            standby = true;
+          }
+        }
+        break;
+  
+      case (ERRORE):                    // status used in case of error
+        {
+          Serial.println("STATUS: ERRORE");
+          if (WiFi.status() == WL_CONNECTED) {
+            WiFi.disconnect();
+          }
+          stato_macchina = STANDBY;
+        }
+        break;
+  
+      default:
+        break;
+    }
+    
+    delay(10);
+  }
+}
+
 void setup() {
   Serial.begin(115200);                         // Seriale standard per la comunicazione di debug
   Serial2.begin(9600, SERIAL_8N1, RXD2, TXD2);  // Seriale 2 usata per connettersi al sensore MH-Z19B
@@ -127,263 +440,39 @@ void setup() {
   sendCmdToMhz19(buf);
   cmdSent = false;                              // ready to process new commands on MH-Z19B (to be changed, absorbed by state machine) 
   client.setTimeout(HTTP_TIMEOUT);              // set Client timeout
+  /* Buttons interrupts */
+  pinMode(GPIO_START_SESSION, INPUT);                       // Start session  - button
+  pinMode(GPIO_START_SESSION_LED, OUTPUT);                  // Start session  - led
+  pinMode(GPIO_STOP_SESSION, INPUT);                        // Stop session   - button
+  pinMode(GPIO_STOP_SESSION_LED, OUTPUT);                   // Stop session   - led
+  pinMode(GPIO_FAST_MODE, INPUT);                           // Fast-mode      - switch
+  pinMode(GPIO_FAST_MODE_LED, OUTPUT);                      // Fast-mode      - led
+  attachInterrupt(GPIO_START_SESSION, startNewSession_ISR, RISING);
+  attachInterrupt(GPIO_STOP_SESSION, stopSession_ISR, RISING);
+
+  /***********************************/
+  /************  TASKS ***************/
+    // Now set up two tasks to run independently.
+    xTaskCreate(
+      mainTask
+    ,  "mainTask"   // A name just for humans
+    ,  10240  // This stack size can be checked & adjusted by reading the Stack Highwater
+    ,  NULL
+    ,  2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+    ,  NULL);
+
+    xTaskCreate(
+       ledTask
+    ,  "ledTask"   // A name just for humans
+    ,  1024  // This stack size can be checked & adjusted by reading the Stack Highwater
+    ,  NULL
+    ,  2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+    ,  NULL);
+
 }
 
 void loop() { //Choose Serial1 or Serial2 as required
-  switch (stato_macchina) {
-    case (INIT):                                    // Initial status
-      {
-        Serial.println("STATUS: INIT");
-      }
-      stato_macchina = API_AUTH;
-      break;
-
-    case (API_AUTH): // Try login to server before start loop
-    {
-     if(tryAuth(&terrariumID,&auth_state)){
-      stato_macchina = MEASURING_SHT_20; 
-     }
-      break;
-    }
-
-    case (MEASURING_SHT_20):                    // Status used for collecting measurements from SHT20
-      {
-        Serial.println("--------------------------");
-        Serial.println("STATUS: MEASURING_SHT_20");
-        shtMeasure_all();
-        Serial.println("Temperatura: " + (String)tempC + "°C");
-        Serial.println("Punto di rugiada: " + (String)dew_pointC + "°C dew point");
-        Serial.println("Umidita' relativa: " + (String)RH + " %");
-        Serial.println("deficit di pressione di vapore: " + (String)vpd_kPa + " kPa");
-        stato_macchina = REQUEST_MH_Z19B;
-      }
-      break;
-
-    case (REQUEST_MH_Z19B):                     // Status used for requesting measurements from MH-Z19B
-      {
-        Serial.println("STATUS: REQUEST_MH_Z19B");
-        byte buf[BL] = CMD_READCO2;
-        sendCmdToMhz19(buf);
-        stato_macchina = RECEIVING_MH_Z19B;
-        Serial.println("STATUS: RECEIVING_MH_Z19B");
-      }
-      break;
-
-    case (RECEIVING_MH_Z19B):                   // Status used for waiting measurements from MH-Z19B
-      {
-        while ( cmdSent && Serial2.available() > 0 ) {
-          resp[i] = int(Serial2.read());
-          i++;
-          if (i > 8) {
-            i = 0;
-            cmdSent = false;
-            start = millis();
-            stato_macchina = RECEIVED_MH_Z19B;
-          }
-        }
-      }
-      break;
-
-    case (RECEIVED_MH_Z19B):                    // Status used to print measurements from MH-Z19B
-      {
-        Serial.println("STATUS: RECEIVED_MH_Z19B");
-        CO2 = resp[2] * 256 + resp[3];
-        Serial.print("Concentrazione CO2: ");
-        Serial.println((String)CO2);
-        stato_macchina = WIFI_CONNECTING;
-      }
-      break;
-
-    case (WIFI_CONNECTING):                     // Status used to connect to a known Wi-Fi network
-      {
-        Serial.println("STATUS: WIFI_CONNECTING");
-        WiFi.begin(ssid, password);
-        int counter = 0;
-        Serial.print("Connecting to ");
-        Serial.print(ssid);
-        while (WiFi.status() != WL_CONNECTED) {
-          delay(500);
-          Serial.print(".");
-        }
-        Serial.println("");
-        stato_macchina = WIFI_CONNECTED;
-      }
-      break;
-
-    case (WIFI_CONNECTED):                     // Status used when connection has been established to a Wi-Fi network
-      {
-        Serial.println("STATUS: WIFI_CONNECTED");
-        Serial.print("IP address: ");
-        Serial.println(WiFi.localIP());
-        stato_macchina = NTP_GET_TIME;
-      }
-      break;
-
-    case (NTP_GET_TIME):                  // Status used to init NTP client
-      {
-        Serial.println("STATUS: NTP_GET_TIME");
-        configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
-
-        stato_macchina = NTP_GOT_TIME;
-      }
-      break;
-
-    case (NTP_GOT_TIME):                  // Status used to get time from NTP server
-      {
-        Serial.println("STATUS: NTP_GOT_TIME");
-        // Init and get the time
-        struct tm timeinfo;
-        if (!getLocalTime(&timeinfo)) {
-          Serial.println("*** Failed to obtain time");
-          stato_macchina = NTP_GET_TIME;
-          return;
-        } else {
-          Serial.println("*** Got time");
-          char buf[15];
-          strftime(buf, 30, "%Y-%m-%d %H:%M:%S", &timeinfo);
-          orario = (String) buf;
-          Serial.println("Time:" + orario);
-          stato_macchina = PREPARE_DATA;
-        }
-      }
-      break;
-
-    case (PREPARE_DATA):                  // Status used to start connecting to the server that collects measurements
-      {
-        Serial.println("STATUS: PREPARE_DATA");
-        StaticJsonDocument<768> doc;
-
-      
-        JsonArray Data = doc.createNestedArray("Data");
-
-        JsonObject Data_Temp = Data.createNestedObject();
-        Data_Temp["TerrariumID"] = authResponse["ID"];
-        Data_Temp["SensorID"] = authResponse["Sensors"]["Temperature_1"]["ID"];
-        Data_Temp["Value"] = (String)tempC;
-        Data_Temp["Timestamp"] = (String)orario;
-        Data_Temp["SessionKey"] = "";
-
-        JsonObject Data_Rugiada = Data.createNestedObject();
-        Data_Rugiada["TerrariumID"] = authResponse["ID"];
-        Data_Rugiada["SensorID"] = authResponse["Sensors"]["PuntoRugiada_1"]["ID"];
-        Data_Rugiada["Value"] = (String)dew_pointC;
-        Data_Rugiada["Timestamp"] = (String)orario;
-        Data_Rugiada["SessionKey"] = "";
-
-        JsonObject Data_Umid = Data.createNestedObject();
-        Data_Umid["TerrariumID"] = authResponse["ID"];
-        Data_Umid["SensorID"] = authResponse["Sensors"]["Humid_1"]["ID"];
-        Data_Umid["Value"] = (String)RH;
-        Data_Umid["Timestamp"] = (String)orario;
-        Data_Umid["SessionKey"] = "";
-
-        JsonObject Data_VPD = Data.createNestedObject();
-        Data_VPD["TerrariumID"] = authResponse["ID"];
-        Data_VPD["SensorID"] = authResponse["Sensors"]["VPD_1"]["ID"];
-        Data_VPD["Value"] = (String)vpd_kPa;
-        Data_VPD["Timestamp"] = (String)orario;
-        Data_VPD["SessionKey"] = "";
-
-        JsonObject Data_CO2 = Data.createNestedObject();
-        Data_CO2["TerrariumID"] = authResponse["ID"];
-        Data_CO2["SensorID"] = authResponse["Sensors"]["CO2_1"]["ID"];
-        Data_CO2["Value"] = (String)CO2;
-        Data_CO2["Timestamp"] = (String)orario;
-        Data_CO2["SessionKey"] = "";
-
-        postMessage = "";
-        serializeJson(doc, postMessage);
-        serializeJson(doc, Serial);
-        stato_macchina = SEND_DATA;
-
-      }
-      break;
-
-    case (SEND_DATA):                  // Status used to start connecting to the server that collects measurements
-      {
-        Serial.println("STATUS: SEND_DATA");
-        if (WiFi.status() == WL_CONNECTED) { //Check WiFi connection status
-          String URI = (String)"http://" + (String)server + (String)":" + (String)serverPort + (String)resource;
-          Serial.println("Connecting to " + URI);
-          http.begin(URI); //Specify destination for HTTP request
-          http.addHeader("Content-Type", "application/json");
-          int httpCode = http.POST(postMessage);
-          if (httpCode > 0) { //Check for the returning code
-            String payload = http.getString();
-            Serial.println(httpCode);
-            Serial.println(payload);
-            stato_macchina = RESPONSE_OK;
-          }
-          else {
-            Serial.println("Error on HTTP request");
-            Serial.println(httpCode);
-            stato_macchina = ERRORE;
-          }
-        } else {
-          Serial.println("Lost connection");
-          stato_macchina = ERRORE;
-        }
-      }
-      break;
-
-
-    case (WAITING_RESPONSE):               // Status used when waiting for a response from the server that collects measurements
-      {
-        Serial.println("STATUS: WAITING_RESPONSE");
-        skipResponseHeaders();
-        stato_macchina = RESPONSE_OK;
-
-      }
-      break;
-
-    case (RESPONSE_OK):               // Status used when response received from the server that collects measurements is OK
-      {
-        Serial.println("STATUS: RESPONSE_OK");
-        Serial.println(response);
-        if (!client.connected()) {
-          Serial.println();
-          Serial.println("disconnecting http client...");
-          client.stop();
-        }
-        stato_macchina = WIFI_DISCONNECT;
-      }
-      break;
-
-    case (WIFI_DISCONNECT):                     // Status used when disconnecting from the Wi-Fi network
-      {
-        Serial.println("STATUS: WIFI_DISCONNECT");
-        WiFi.disconnect();
-        stato_macchina = STANDBY;
-      }
-      break;
-
-    case (STANDBY):                     // Status used when MCU goes to standby (actually this can be better, by using deep sleep and so on)
-      {
-        if (standby) {
-          if (millis() - start > (1000 * NSEC) ) {
-            standby = false;
-            stato_macchina = MEASURING_SHT_20;
-          }
-        } else {
-          Serial.println("STATUS: STANDBY");
-          standby = true;
-        }
-      }
-      break;
-
-    case (ERRORE):                    // status used in case of error
-      {
-        Serial.println("STATUS: ERRORE");
-        if (WiFi.status() == WL_CONNECTED) {
-          WiFi.disconnect();
-        }
-        stato_macchina = STANDBY;
-      }
-      break;
-
-    default:
-      break;
-  }
+  delay(50);
 }
 
 void sendCmdToMhz19(byte *buf) {
@@ -551,12 +640,14 @@ bool skipResponseHeaders() {
 #define AUTH_CLOSE 7
 
 #define _TYPE_OF_TERRARIUM "Terrain"
-#define _TERRARIUM_ALIAS "ScienceGround2021_Test"
+#define _TERRARIUM_ALIAS "Lorenzo's Terrarium"
 #define _MAGIC_KEY "InmfNpOwCSJJhXbUnptbK5c9tdGb4CnDdPrx9WWSlu9FNELGKMfpCpAifJSpbMSHMxgN7IxKmyFlFmnF6dhF3dr3h4vnVGAze9Cpqf1z3dpIY5U37jbpmZqhNv09AaxK6WqIc3CqgYQRs7ROGWuTzBZ9vX2AVoATX0Nz0hixb9iuxUfCTRE8BqDmyhknYGWTGKubF2HuMcAsytgyL47pNiFMPcSMksBUm1hmA5EMSjSq91cjz3w2sJPldAezdZBV"
 
 #define TRY_BACK_TIME 300 // 5 minutes
 
 String loginResponse;
+String sessionResponse;
+String session; 
 
 bool tryAuth(String* _terrariumId, int* auth_step){
 
@@ -692,4 +783,128 @@ bool tryAuth(String* _terrariumId, int* auth_step){
       break;
   }
   
+}
+
+
+
+/* 
+ * Request for a new session
+ */
+#define SESSION_START_CONNECTION 0
+#define SESSION_CREATE_REQUEST 1
+#define SEND_SESSION_REQ 2
+#define SESSION_WAIT_RESPONSE 3
+#define SESSION_CHECK_RESPONSE 4
+#define SESSION_DISCONNECT 5
+#define SESSION__ERROR 255
+#define SESSION_STANDBY 6
+#define SESSION_CLOSE 7
+
+String SessionResponse;
+
+bool requestNewSession(String _terrariumId, int* session_step){
+
+  switch(*session_step){
+
+    case SESSION_START_CONNECTION: // start connecion
+    {
+      Serial.println("STATUS: WIFI_CONNECTING");
+      WiFi.begin(ssid, password);
+      int counter = 0;
+      Serial.print("Connecting to ");
+      Serial.print(ssid);
+      while (WiFi.status() != WL_CONNECTED) {
+        delay(500);
+        Serial.print(".");
+      }
+      Serial.println("");
+      WiFi.macAddress(mac);
+      *session_step = SESSION_CREATE_REQUEST;
+      return false;
+      break;
+    }
+
+    case SESSION_CREATE_REQUEST:
+    {
+      Serial.println("STATUS: CREATE_REQUEST");
+      StaticJsonDocument<512> doc;
+
+      postMessage = "";
+      
+      doc["TerrariumID"] = _terrariumId;
+
+      serializeJson(doc, postMessage);
+      serializeJson(doc, Serial);
+
+      *session_step = SEND_LOGIN_REQ;
+      return false;
+      break;
+    }
+
+    case SEND_SESSION_REQ:
+    {
+
+      Serial.println("STATUS: SEND START SESSION REQUEST");
+      if (WiFi.status() == WL_CONNECTED) { //Check WiFi connection status
+        String URI = (String)"http://" + (String)server + (String)":" + (String)serverPort + (String)startSession;
+        Serial.println("Connecting to " + URI);
+        http.begin(URI); //Specify destination for HTTP request
+        http.addHeader("Content-Type", "application/json");
+        int httpCode = http.POST(postMessage);
+        if (httpCode > 0) { //Check for the returning code
+          sessionResponse = http.getString();
+          Serial.println(httpCode);
+          Serial.println(sessionResponse);
+          *session_step = SESSION_CHECK_RESPONSE;
+        }
+        else {
+          Serial.println("Error on HTTP request");
+          Serial.println(httpCode);
+          *session_step = _ERROR;
+        }
+      } else {
+        Serial.println("Lost connection");
+        *session_step = _ERROR;
+      }
+      return false;
+      break;
+    }
+
+    case _ERROR:
+    {
+      if (WiFi.status() == WL_CONNECTED){
+        WiFi.disconnect();
+      }
+      Serial.println("Error, try again");
+      *session_step = SESSION_START_CONNECTION;
+      delay(TRY_BACK_TIME*1000);
+      break;
+    }
+
+    case (SESSION_CHECK_RESPONSE):               // Status used when response received from the server that collects measurements is OK
+      {
+        Serial.println("STATUS: RESPONSE_OK");
+        Serial.println(sessionResponse);
+        if (!client.connected()) {
+          Serial.println();
+          Serial.println("disconnecting http client...");
+          client.stop();
+        }
+        deserializeJson(sessionApiResponse, sessionResponse);
+        globalSession = sessionApiResponse["SessionKey"].as<String>();
+        Serial.println(globalSession);
+        *session_step = SESSION_CLOSE;
+      }
+      return false;
+      break;
+
+      case (SESSION_CLOSE):                     // Status used when disconnecting from the Wi-Fi network
+        {
+          Serial.println("STATUS: AUTH_CLOSE");
+          if (WiFi.status() == WL_CONNECTED){
+            WiFi.disconnect();
+          }
+          return true;
+        }
+  }
 }
