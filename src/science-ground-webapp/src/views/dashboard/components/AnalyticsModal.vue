@@ -65,26 +65,41 @@
           <timefilters v-if="isOpen" />
           <livefilters v-bind:liveStatus="liveModeEnabled" />
 
-          <template >
-            <v-card outlined :class="!$vuetify.breakpoint.smAndDown ? 'ml-5 mt-2 justify-center' : 'mt-2 justify-center'"  elevation="0" style="border: thin solid #999999" :width="!$vuetify.breakpoint.smAndDown ? '80%' : '100%'"> 
-              <v-card-title outlined class="ma-0 pa-0">Sessioni Dimostrative</v-card-title>  
+          <template>
+            <v-card
+              outlined
+              :class="
+                !$vuetify.breakpoint.smAndDown
+                  ? 'ml-5 mt-2 justify-center'
+                  : 'mt-2 justify-center'
+              "
+              elevation="0"
+              style="border: thin solid #999999"
+              :width="!$vuetify.breakpoint.smAndDown ? '80%' : '100%'"
+            >
+              <v-card-title outlined class="ma-0 pa-0"
+                >Sessioni Dimostrative</v-card-title
+              >
               <v-list dense class="mb-1 mt-2 pa-0" rounded>
-                <v-list-item  style="width:100%">
-                  <v-list-item-group color="primary" v-model="selectedSession"> 
-                     <v-list-item v-for="(item, i) in terrariumSession" :key="i"  >
+                <v-list-item style="width: 100%">
+                  <v-list-item-group color="primary" v-model="selectedSession">
+                    <v-list-item v-for="(item, i) in terrariumSession" :key="i">
                       <v-list-item-icon>
                         <v-icon>mdi-access-point</v-icon>
                       </v-list-item-icon>
                       <v-list-item-content>
-                        <v-list-item-title class="font-weight-black" >Da: {{formatDate(item.TimestampStart)}} {{"                 "}} A: {{formatDate(item.TimestampEnd)}}</v-list-item-title>
+                        <v-list-item-title class="font-weight-black"
+                          >Da: {{ formatDate(item.TimestampStart) }}
+                          {{ "                 " }} A:
+                          {{ formatDate(item.TimestampEnd) }}</v-list-item-title
+                        >
                       </v-list-item-content>
                     </v-list-item>
                   </v-list-item-group>
                 </v-list-item>
               </v-list>
-            </v-card> 
+            </v-card>
           </template>
-
         </v-col>
       </v-row>
     </v-card>
@@ -116,24 +131,22 @@ export default {
       terrariumName: "",
       terrariumId: "",
       terrariumSensors: [],
-      terrariumSession:[],
+      terrariumSession: [],
       liveTimer: null,
       liveModeEnabled: false,
       selectedSession: 0,
-
+      cancelTokenSource: null,
       from: "",
-      to:""
+      to: "",
     };
   },
-  watch:{
-    selectedSession(val){
+  watch: {
+    selectedSession(val) {
+      if (!this.isOpen) return;
 
-      if(!this.isOpen)
-        return;
-
-       EventBus.$emit("filterUpdated", {});
-       this.getSensorsMeasures();
-    }
+      EventBus.$emit("filterUpdated", {});
+      this.getSensorsMeasures();
+    },
   },
   mounted() {
     let self = this;
@@ -145,18 +158,17 @@ export default {
       self.terrariumSensors = value.sensorsData;
       self.terrariumSession = value.Sessions;
 
-      self.to  = new Date().toISOString().substr(0, 10);
-      self.from = moment(
-        new Date().toISOString().substr(0, 10),
-        "YYYY-MM-DD "
-      )
+      self.to = new Date().toISOString().substr(0, 10);
+      self.from = moment(new Date().toISOString().substr(0, 10), "YYYY-MM-DD ")
         .subtract(3, "months")
         .format("YYYY-MM-DD");
 
       self.getSensorsMeasures();
     });
 
-    EventBus.$on("filterUpdated", (value) => {
+    EventBus.$on("filterUpdated", (value) => { 
+       self.clearChart();
+      
       if (value.onlyLast != undefined && !value.onlyLast) {
         self.liveModeEnabled = false;
         this.liveTimer.stop();
@@ -169,7 +181,7 @@ export default {
         self.getSensorsMeasures();
       }
 
-      self.clearChart();
+    
     });
 
     this.liveTimer = new TaskTimer(1000);
@@ -191,12 +203,14 @@ export default {
       this.liveModeEnabled = false;
       this.liveTimer.stop();
       this.selectedSession = 0;
-    },
-    formatDate(date){
-      if(date == "")
-        return "--/--/--/ --:--";
 
-      return moment(date).format("YYYY/MM/DD HH:mm")
+      if(this.cancelTokenSource != undefined)
+        this.cancelTokenSource.cancel();
+    },
+    formatDate(date) {
+      if (date == "") return "--/--/--/ --:--";
+
+      return moment(date).format("YYYY/MM/DD HH:mm");
     },
     startLiveChart() {
       let self = this;
@@ -212,7 +226,12 @@ export default {
       let self = this;
 
       let sk = "";
-      if(self.selectedSession != undefined && self.selectedSession != -1 && self.terrariumSession.length  > 0)
+      self.cancelTokenSource =  Vue.axios.CancelToken.source();
+      if (
+        self.selectedSession != undefined &&
+        self.selectedSession != -1 &&
+        self.terrariumSession?.length > 0
+      )
         sk = self.terrariumSession[self.selectedSession].SessionKey;
 
       Vue.axios
@@ -226,7 +245,10 @@ export default {
             "&LastUpdateOnly=" +
             self.liveModeEnabled +
             "&SessionKey=" +
-            sk
+            sk,
+          {
+            cancelToken: self.cancelTokenSource.token,
+          }
         )
         .then((res) => {
           let temp = [];
@@ -251,7 +273,7 @@ export default {
                 sensors: self.terrariumSensors,
               });
             });
-          }else{
+          } else {
             self.clearChart();
           }
         })

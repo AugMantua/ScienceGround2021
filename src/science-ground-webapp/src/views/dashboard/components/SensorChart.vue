@@ -56,7 +56,7 @@ export default {
     EventBus.$on("updateChart", (value) => {
       self.reloadAllData(value);
     });
-     EventBus.$on("filterUpdated", (value) => {
+    EventBus.$on("filterUpdated", (value) => {
       self.loading = true;
     });
   },
@@ -74,12 +74,16 @@ export default {
       }
 
       // different chart needed to be update
-      if (self.sensorDatas != null && res.key != null && res.key != self.sensorDatas.ID) {
+      if (
+        self.sensorDatas != null &&
+        res.key != null &&
+        res.key != self.sensorDatas.ID
+      ) {
         return;
       }
 
       // update multi series chart
-      if (!res.liveMode && self.sensorDatas == null) {
+      if ((self.series.length < res.sensors.length || !res.liveMode)  && self.sensorDatas == null) {
         self.loading = false;
 
         let seriesName = "";
@@ -98,7 +102,7 @@ export default {
       }
 
       // update series on mode live
-      if (res.liveMode) {
+      if (res.liveMode && self.series.length > 0) {
         self.loading = false;
         self.addDataToSerie(res.key, res.sensors, res.data);
         return;
@@ -133,20 +137,24 @@ export default {
       if (self.sensorDatas == null) {
         sensorsList.forEach((el, index) => {
           if (el.ID == sensorKey) {
-           seriesPos = index;
+            seriesPos = index;
           }
         });
       }
-      
-      let seriesNumElem = self.series[seriesPos].data.length;
+
+      let seriesNumElem = 0;
+
+      if (self.series[seriesPos] != undefined) {
+        seriesNumElem = self.series[seriesPos].data.length;
+      } 
 
       if (
-        seriesNumElem  == 0 ||
-        self.series[seriesPos].data[seriesNumElem -1 ].x != updateData[0].x
+        seriesNumElem == 0 ||
+        self.series[seriesPos].data[seriesNumElem - 1].x != updateData[0].x
       ) {
         self.series[seriesPos].data.push(updateData[0]);
 
-        self.$refs.sensorChart.updateSeries( self.series );
+        self.$refs.sensorChart.updateSeries(self.series);
       }
     },
   },
