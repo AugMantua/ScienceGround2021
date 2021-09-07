@@ -44,6 +44,7 @@ type terrariumGet struct {
 	Status          string             `bson:"status,omitempty"`
 	Sessions        []sessionData      `bson:"sessions,omitempty"`
 	AuthState       bool               `bson:"authState"`
+	LastSync        string             `bson:"lastSync,omitempty"`
 }
 
 type sessionData struct {
