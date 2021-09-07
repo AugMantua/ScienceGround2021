@@ -80,8 +80,8 @@
               <v-card-title outlined class="ma-0 pa-0"
                 >Sessioni Dimostrative</v-card-title
               >
-              <v-list dense class="mb-1 mt-2 pa-0" rounded>
-                <v-list-item style="width: 100%">
+              <v-list dense class="mb-1 mt-2 pa-0 overflow-y-auto"  style="max-height: 400px" rounded>
+                <v-list-item style="width: 100%; ">
                   <v-list-item-group color="primary" v-model="selectedSession">
                     <v-list-item v-for="(item, i) in terrariumSession" :key="i">
                       <v-list-item-icon>

@@ -18,7 +18,7 @@
           <v-card-title class="d-inline-block text-truncate text-center">{{ terrarium.TerrariumAlias }}</v-card-title>
           <v-card-subtitle style="margin-top:1px">
             <p class="mb-1">{{"Tipo: " + terrarium.TypeOfTerrarium}}</p>
-            <p class="mb-1">{{"Ultima sincronizzazione: " + "11/11/2021 11:20"}}</p>
+            <p class="mb-1">{{"Ultima sincronizzazione: " + (terrarium.LastSync != undefined ? terrarium.LastSync :  "-------------")}}</p>
           </v-card-subtitle>
          
         </a>
