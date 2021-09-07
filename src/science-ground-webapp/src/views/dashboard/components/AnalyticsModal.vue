@@ -159,9 +159,9 @@ export default {
       self.terrariumSession = value.Sessions;
 
       self.to = new Date().toISOString().substr(0, 10);
-      self.from = moment(new Date().toISOString().substr(0, 10), "YYYY-MM-DD ")
+      self.from = moment(new Date().toISOString().substr(0, 10), "YYYY-MM-DD HH:mm")
         .subtract(3, "months")
-        .format("YYYY-MM-DD");
+        .format("YYYY-MM-DD HH:mm");
 
       self.getSensorsMeasures();
     });
