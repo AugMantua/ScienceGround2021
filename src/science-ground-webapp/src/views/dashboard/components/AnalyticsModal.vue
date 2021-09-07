@@ -158,7 +158,8 @@ export default {
       self.terrariumSensors = value.sensorsData;
       self.terrariumSession = value.Sessions;
 
-      self.to = new Date().toISOString().substr(0, 10);
+      const momentDate = moment.utc(new Date());
+      self.to = momentDate.clone().endOf("day").format("YYYY-MM-DD HH:mm");
       self.from = moment(new Date().toISOString().substr(0, 10), "YYYY-MM-DD HH:mm")
         .subtract(3, "months")
         .format("YYYY-MM-DD HH:mm");
