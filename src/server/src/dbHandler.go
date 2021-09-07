@@ -31,7 +31,9 @@ type terrariumData struct {
 	MagicKey        string                `bson:"magicKey,omitempty"`
 	AuthState       bool                  `bson:"authState"`
 	LastUpdate      []single_measure_data `bson:"lastUpdate,omitempty"`
+	LastSession     primitive.ObjectID    `bson:"lastSession,omitempty"`
 	UpdateOn        string                `bson:"updateOn,omitempty"`
+	LastSync        string                `bson:"lastSync,omitempty"`
 }
 
 type terrariumGet struct {
@@ -154,7 +156,7 @@ func insertMeasures(db *mongo.Database, ctx context.Context, measures []push_mea
 			return err
 		}
 	}
-	update = bson.M{"$set": bson.M{"lastUpdate": updateMeasures}}
+	update = bson.M{"$set": bson.M{"lastUpdate": updateMeasures, "lastSync": time.Now().Format(time.RFC3339)}}
 	_, err = db.Collection(_TERRARIUMS_COLLECTION).UpdateByID(ctx, id, update)
 	if err != nil {
 		return err
@@ -249,16 +251,25 @@ func createSession(db *mongo.Database, ctx context.Context, terrariumID string) 
 
 	session.SessionKey = primitive.NewObjectIDFromTimestamp(time.Now())
 	session.IsAlive = true
+	var tempTerrarium terrariumData
 	var t = time.Now()
 	session.TimestampStart = fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
-
-	update := bson.M{"$push": bson.M{"sessions": session}}
-
+	// Get terrarium by ID
 	id, err := primitive.ObjectIDFromHex(terrariumID)
-
 	if err != nil {
 		return "", errors.New("can't cast request terrariumID to objectID")
 	}
+
+	err = db.Collection(_TERRARIUMS_COLLECTION).FindOne(ctx, bson.M{"_id": id}).Decode(&tempTerrarium)
+	if err != nil {
+		return "", errors.New("can't get terrarium")
+	}
+
+	if tempTerrarium.LastSession != primitive.NilObjectID {
+		stopSession(db, ctx, tempTerrarium.LastSession.Hex(), terrariumID)
+	}
+
+	update := bson.M{"$push": bson.M{"sessions": session}, "$set": bson.M{"lastSession": session.SessionKey}}
 	_, err = db.Collection(_TERRARIUMS_COLLECTION).UpdateByID(ctx, id, update)
 	if err != nil {
 		return "", err
@@ -284,7 +295,8 @@ func stopSession(db *mongo.Database, ctx context.Context, SessionKey string, ter
 
 	update := bson.M{
 		"$set": bson.M{
-			"sessions.$.isAlive": false,
+			"sessions.$.isAlive":      false,
+			"sessions.$.timestampEnd": time.Now().Format(time.RFC3339),
 		},
 	}
 
