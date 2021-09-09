@@ -443,8 +443,7 @@ void mainTask(void *you_need_this){
       default:
         break;
     }
-    
-    delay(10);
+    delay(100);
   }
 }
 
@@ -803,9 +802,7 @@ bool tryAuth(String* _terrariumId, int* auth_step){
     case (AUTH_CLOSE):                     // Status used when disconnecting from the Wi-Fi network
       {
         Serial.println("STATUS: AUTH_CLOSE");
-        if (WiFi.status() == WL_CONNECTED){
-          WiFi.disconnect();
-        }
+        WiFi.disconnect();
         return true;
       }
       break;
@@ -928,10 +925,8 @@ bool requestNewSession(String _terrariumId, int* session_step){
 
       case (SESSION_CLOSE):                     // Status used when disconnecting from the Wi-Fi network
         {
-          Serial.println("STATUS: AUTH_CLOSE");
-          if (WiFi.status() == WL_CONNECTED){
-            WiFi.disconnect();
-          }
+          Serial.println("STATUS: SESSION CLOSE");
+          WiFi.disconnect();
           return true;
         }
   }
