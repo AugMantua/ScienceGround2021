@@ -12,6 +12,25 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h> //v6
 
+
+/*************************************************/
+/*************** SENSORS DEFS #BEG ***************/
+
+#define SHT2X 0
+#define SHT1X 1
+
+#define MOIST_SENSOR SHT2X
+
+#if MOIST_SENSOR == SHT1X
+#include <SHT1x-ESP.h>
+
+// default to 5.0v boards, e.g. Arduino UNO
+SHT1x sht1x(21, 22);
+#endif
+
+/*************** SENSORS DEFS #END ***************/
+/*************************************************/
+
 WiFiClient client;
 HTTPClient http;
 
@@ -432,10 +451,10 @@ void mainTask(void *you_need_this){
 void setup() {
   Serial.begin(115200);                         // Seriale standard per la comunicazione di debug
   Serial2.begin(9600, SERIAL_8N1, RXD2, TXD2);  // Seriale 2 usata per connettersi al sensore MH-Z19B
-
-  Wire.begin();                                 // Inizializzazione I2C usata per SHT20
-  shtBegin();                                   // Inizializzazione sensore SHT20
-
+  
+  #if MOIST_SENSOR == SHT2X
+  sht2XBegin();                                   // Inizializzazione sensore SHT20
+  #endif
   byte buf[BL] = CMD_ABC_OFF;                   // We are setting Automatic Baseline Correction to OFF
   sendCmdToMhz19(buf);
   cmdSent = false;                              // ready to process new commands on MH-Z19B (to be changed, absorbed by state machine) 
@@ -565,8 +584,13 @@ float shtHumidity()
 
 float shtVpd()
 {
+  #if MOIST_SENSOR == SHT1X
+  tempC = sht1x.readTemperatureC();
+  RH = sht1x.readHumidity();
+  #else
   tempC = shtTemperature();
   RH = shtHumidity();
+  #endif
 
   float es = 0.6108 * exp(17.27 * tempC / (tempC + 237.3));
   float ae = RH / 100 * es;
@@ -577,9 +601,13 @@ float shtVpd()
 
 float shtDew_point()
 {
+  #if MOIST_SENSOR == SHT1X
+  tempC = sht1x.readTemperatureC();
+  RH = sht1x.readHumidity();
+  #else
   tempC = shtTemperature();
   RH = shtHumidity();
-
+  #endif
   float tem = -1.0 * tempC;
   float esdp = 6.112 * exp(-1.0 * 17.67 * tem / (243.5 - tem));
   float ed = RH / 100.0 * esdp;
@@ -589,8 +617,9 @@ float shtDew_point()
   return dew_pointC;
 }
 
-bool shtBegin()
+bool sht2XBegin()
 {
+  Wire.begin();                                 // Inizializzazione I2C usata per SHT20
   _address = SHT20_I2C;
   _resolution = SHT20_RESOLUTION_12BITS;
   _i2cPort = &Wire;
@@ -600,9 +629,8 @@ bool shtBegin()
 
 void shtMeasure_all()
 {
-  // also measures temp/humidity
-  shtVpd();
-  shtDew_point();
+    shtVpd();
+    shtDew_point();
 }
 
 
