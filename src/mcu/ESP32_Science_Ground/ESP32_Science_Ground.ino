@@ -19,7 +19,7 @@
 #define SHT2X 0
 #define SHT1X 1
 
-#define MOIST_SENSOR SHT2X
+#define MOIST_SENSOR SHT1X
 
 #if MOIST_SENSOR == SHT1X
 #include <SHT1x-ESP.h>
@@ -116,8 +116,8 @@ float dew_pointC;
 float RH;
 int CO2;
 
-//const char* server = "lucacarre2400.ddns.net";    // server's address
-const char* server = "192.168.47.90";               // server's address
+const char* server = "lucacarre2400.ddns.net";    // server's address
+//const char* server = "192.168.47.90";               // server's address
 const int serverPort = 8080;                        // server port
 const char* resource = "/data/measures/add";        // resource requested
 const char* login = "/devices/auth";                // auth API
