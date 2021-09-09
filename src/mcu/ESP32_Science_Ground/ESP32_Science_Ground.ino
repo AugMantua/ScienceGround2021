@@ -212,6 +212,7 @@ void mainTask(void *you_need_this){
               cmdSent = false;
               start = millis();
               stato_macchina = RECEIVED_MH_Z19B;
+              Serial2.flush();
             }
           }
         }
