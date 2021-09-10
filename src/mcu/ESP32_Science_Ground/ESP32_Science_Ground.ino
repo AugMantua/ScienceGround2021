@@ -154,6 +154,7 @@ void IRAM_ATTR startNewSession_ISR()
 
 void IRAM_ATTR stopSession_ISR()
 {
+    Serial.println("Stop session interrupt");
     startSessionFlag = false;
     stopSessionFlag = true;
 }
@@ -176,8 +177,8 @@ void ledTask(void *you_need_this){
     }else{
       digitalWrite(GPIO_START_SESSION_LED,false);
     }
+    delay(1000);
   }
-  delay(1000);
 }
 
 void mainTask(void *you_need_this){
@@ -245,6 +246,7 @@ void mainTask(void *you_need_this){
           if(startSessionFlag){
             if(requestNewSession(authResponse["ID"].as<String>(),&session_state)){
               startSessionFlag = false;
+              session_state = 0;
             }
           }else{
             stato_macchina = WIFI_CONNECTING;
@@ -476,7 +478,7 @@ void setup() {
     ,  "mainTask"   // A name just for humans
     ,  10240  // This stack size can be checked & adjusted by reading the Stack Highwater
     ,  NULL
-    ,  2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+    ,  0  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
     ,  NULL);
 
     xTaskCreate(
@@ -484,7 +486,7 @@ void setup() {
     ,  "ledTask"   // A name just for humans
     ,  1024  // This stack size can be checked & adjusted by reading the Stack Highwater
     ,  NULL
-    ,  2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+    ,  1    // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
     ,  NULL);
 
 }
