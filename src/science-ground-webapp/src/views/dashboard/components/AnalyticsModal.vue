@@ -135,7 +135,7 @@ export default {
       liveTimer: null,
       liveModeEnabled: false,
       selectedSession: 0,
-      cancelTokenSource: null,
+
       from: "",
       to: "",
     };
@@ -168,8 +168,7 @@ export default {
     });
 
     EventBus.$on("filterUpdated", (value) => { 
-       self.clearChart();
-      
+      self.clearChart();
       if (value.onlyLast != undefined && !value.onlyLast) {
         self.liveModeEnabled = false;
         this.liveTimer.stop();
@@ -181,8 +180,6 @@ export default {
         self.from = value.from;
         self.getSensorsMeasures();
       }
-
-    
     });
 
     this.liveTimer = new TaskTimer(1000);
@@ -225,15 +222,8 @@ export default {
     },
     getSensorsMeasures() {
       let self = this;
-
+      let requestState =  self.liveModeEnabled ? true : false;
       let sk = "";
-      self.cancelTokenSource =  Vue.axios.CancelToken.source();
-      if (
-        self.selectedSession != undefined &&
-        self.selectedSession != -1 &&
-        self.terrariumSession?.length > 0
-      )
-        sk = self.terrariumSession[self.selectedSession].SessionKey;
 
       Vue.axios
         .get(
@@ -246,13 +236,15 @@ export default {
             "&LastUpdateOnly=" +
             self.liveModeEnabled +
             "&SessionKey=" +
-            sk,
-          {
-            cancelToken: self.cancelTokenSource.token,
-          }
+            sk 
         )
         .then((res) => {
           let temp = [];
+
+          if( self.liveModeEnabled != requestState){
+            return;
+          }
+
           if (res.data.data != null) {
             self.terrariumSensors.forEach((el) => {
               temp[el.ID] = [];

@@ -80,6 +80,10 @@ export default {
         res.key != self.sensorDatas.ID
       ) {
         return;
+      }else if(self.sensorDatas == null && res.sensors != null && res.sensors.length  == self.series.length ){
+        return;
+      }else if(self.sensorDatas != null &&  self.series.length == 1){
+        return;
       }
 
       // update multi series chart
