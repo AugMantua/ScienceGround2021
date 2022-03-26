@@ -68,8 +68,9 @@ def simulateLiveUpdateFromId(terrariumID):
                 jsonPayload = genReqPayloadWithSession(terrarium,SessionKey)
                 print("- Sending request - " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                 requests.post('http://127.0.0.1:8080/data/measures/add',json=jsonPayload)
+                time.sleep(30)
 
 
 #liveUpdateSimulation()
-simulateLiveUpdateFromId("6133814483343737296c7c8c")
+simulateLiveUpdateFromId("61277e0986ea4a1397b395ac")
 
