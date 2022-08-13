@@ -86,7 +86,7 @@ type measures_data struct {
 var _TERRARIUMS_COLLECTION = "terrariums"
 var _MEASURES_COLLECTION = "measures"
 
-func insertMeasures(db *mongo.Database, ctx context.Context, measures []push_measure_request_typ) error {
+func insertMeasures(db *mongo.Database, ctx context.Context, measures []push_measure_request_typ) ([]single_measure_data, error) {
 
 	var terrarium terrariumData
 	var updateMeasures []single_measure_data
@@ -97,13 +97,13 @@ func insertMeasures(db *mongo.Database, ctx context.Context, measures []push_mea
 		var singleMeasure single_measure_data
 
 		if err != nil {
-			return errors.New("can't cast request terrariumID to objectID")
+			return nil, errors.New("can't cast request terrariumID to objectID")
 		}
 
 		err = db.Collection(_TERRARIUMS_COLLECTION).FindOne(ctx, bson.M{"_id": id, "authState": true}).Decode(&terrarium)
 
 		if err != nil {
-			return errors.New("can't find requested terrarium")
+			return nil, errors.New("can't find requested terrarium")
 		}
 
 		var presence bool
@@ -114,7 +114,7 @@ func insertMeasures(db *mongo.Database, ctx context.Context, measures []push_mea
 			}
 		}
 		if !presence {
-			return errors.New("can't find requested sensor")
+			return nil, errors.New("can't find requested sensor")
 		}
 
 		if measure.SessionKey != "" {
@@ -126,7 +126,7 @@ func insertMeasures(db *mongo.Database, ctx context.Context, measures []push_mea
 				}
 			}
 			if !presence {
-				return errors.New("can't find requested session")
+				return nil, errors.New("can't find requested session")
 			}
 			singleMeasure.SessionKey = sessionKey
 		}
@@ -148,7 +148,7 @@ func insertMeasures(db *mongo.Database, ctx context.Context, measures []push_mea
 	}
 	_, err = db.Collection(_MEASURES_COLLECTION).InsertMany(ctx, tempUpdate)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// Update last updateMeasure
 	update = bson.M{
@@ -159,7 +159,7 @@ func insertMeasures(db *mongo.Database, ctx context.Context, measures []push_mea
 		}}
 	_, err = db.Collection(_TERRARIUMS_COLLECTION).UpdateByID(ctx, id, update)
 
-	return err
+	return updateMeasures, err
 }
 
 /*Main dataDB init
