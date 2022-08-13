@@ -46,7 +46,7 @@ type Client struct {
 	conn *websocket.Conn
 
 	// Buffered channel of outbound messages.
-	send chan []single_measure_data
+	send chan single_measure_data
 
 	terrariumId string
 }
@@ -56,26 +56,24 @@ type Client struct {
 // The application runs readPump in a per-connection goroutine. The application
 // ensures that there is at most one reader on a connection by executing all
 // reads from this goroutine.
-// func (c *Client) readPump() {
-// 	defer func() {
-// 		c.hub.unregister <- c
-// 		c.conn.Close()
-// 	}()
-// 	c.conn.SetReadLimit(maxMessageSize)
-// 	c.conn.SetReadDeadline(time.Now().Add(pongWait))
-// 	c.conn.SetPongHandler(func(string) error { c.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
-// 	for {
-// 		_, message, err := c.conn.ReadMessage()
-// 		if err != nil {
-// 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-// 				log.Printf("error: %v", err)
-// 			}
-// 			break
-// 		}
-// 		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
-// 		c.hub.broadcast <- message
-// 	}
-// }
+func (c *Client) readPump() {
+	defer func() {
+		c.hub.unregister <- c
+		c.conn.Close()
+	}()
+	c.conn.SetReadLimit(maxMessageSize)
+	c.conn.SetReadDeadline(time.Now().Add(pongWait))
+	c.conn.SetPongHandler(func(string) error { c.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
+	for {
+		_, _, err := c.conn.ReadMessage()
+		if err != nil {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseNormalClosure) {
+				log.Printf("error: %v", err)
+			}
+			break
+		}
+	}
+}
 
 // writePump pumps messages from the hub to the websocket connection.
 //
@@ -149,7 +147,7 @@ func serveWs(c *gin.Context) {
 	client := &Client{
 		hub:         hub,
 		conn:        conn,
-		send:        make(chan []single_measure_data, 256),
+		send:        make(chan single_measure_data, 256),
 		terrariumId: request.ID,
 	}
 	client.hub.register <- client
@@ -157,5 +155,5 @@ func serveWs(c *gin.Context) {
 	// Allow collection of memory referenced by the caller by doing all work in
 	// new goroutines.
 	go client.writePump()
-	// go client.readPump()
+	go client.readPump()
 }
