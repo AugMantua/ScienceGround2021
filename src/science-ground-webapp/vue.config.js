@@ -1,7 +1,11 @@
 module.exports = {
   devServer: {
-  public:'192.168.178.20:8080',
+    public: 'localhost:8081',
     disableHostCheck: true
+  },
+
+  configureWebpack: {
+    devtool: 'source-map'
   },
 
   transpileDependencies: ['vuetify'],

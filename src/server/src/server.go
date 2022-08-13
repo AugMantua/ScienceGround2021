@@ -67,7 +67,7 @@ func main() {
 
 	router.GET("/status", Status)
 
-	router.Run(":8080")
+	router.Run(":" + os.Getenv("SERVER_PORT"))
 
-	log.Fatal(err)
+	log.Fatal(err.Error())
 }

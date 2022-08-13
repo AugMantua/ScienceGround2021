@@ -80,8 +80,13 @@
               <v-card-title outlined class="ma-0 pa-0"
                 >Sessioni Dimostrative</v-card-title
               >
-              <v-list dense class="mb-1 mt-2 pa-0 overflow-y-auto"  style="max-height: 400px" rounded>
-                <v-list-item style="width: 100%; ">
+              <v-list
+                dense
+                class="mb-1 mt-2 pa-0 overflow-y-auto"
+                style="max-height: 400px"
+                rounded
+              >
+                <v-list-item style="width: 100%">
                   <v-list-item-group color="primary" v-model="selectedSession">
                     <v-list-item v-for="(item, i) in terrariumSession" :key="i">
                       <v-list-item-icon>
@@ -134,7 +139,7 @@ export default {
       terrariumSession: [],
       liveTimer: null,
       liveModeEnabled: false,
-      selectedSession: 0,
+      selectedSession: undefined,
 
       from: "",
       to: "",
@@ -143,7 +148,6 @@ export default {
   watch: {
     selectedSession(val) {
       if (!this.isOpen) return;
-
       EventBus.$emit("filterUpdated", {});
       this.getSensorsMeasures();
     },
@@ -160,14 +164,17 @@ export default {
 
       const momentDate = moment.utc(new Date());
       self.to = momentDate.clone().endOf("day").format("YYYY-MM-DD HH:mm");
-      self.from = moment(new Date().toISOString().substr(0, 10), "YYYY-MM-DD HH:mm")
+      self.from = moment(
+        new Date().toISOString().substr(0, 10),
+        "YYYY-MM-DD HH:mm"
+      )
         .subtract(3, "months")
         .format("YYYY-MM-DD HH:mm");
 
       self.getSensorsMeasures();
     });
 
-    EventBus.$on("filterUpdated", (value) => { 
+    EventBus.$on("filterUpdated", (value) => {
       self.clearChart();
       if (value.onlyLast != undefined && !value.onlyLast) {
         self.liveModeEnabled = false;
@@ -200,10 +207,9 @@ export default {
       this.isOpen = false;
       this.liveModeEnabled = false;
       this.liveTimer.stop();
-      this.selectedSession = 0;
+      this.selectedSession = undefined;
 
-      if(this.cancelTokenSource != undefined)
-        this.cancelTokenSource.cancel();
+      if (this.cancelTokenSource != undefined) this.cancelTokenSource.cancel();
     },
     formatDate(date) {
       if (date == "") return "--/--/--/ --:--";
@@ -222,9 +228,15 @@ export default {
     },
     getSensorsMeasures() {
       let self = this;
-      let requestState =  self.liveModeEnabled ? true : false;
-      let sk = "";
+      let requestState = self.liveModeEnabled ? true : false;
+      let selectedSessionKey = "";
 
+      if (
+        self?.terrariumSession?.length > 0 && 
+        self.selectedSession !== undefined) {
+        selectedSessionKey = self.terrariumSession[self.selectedSession].SessionKey;
+      }
+      
       Vue.axios
         .get(
           "/data/measures/get?TerrariumID=" +
@@ -236,12 +248,12 @@ export default {
             "&LastUpdateOnly=" +
             self.liveModeEnabled +
             "&SessionKey=" +
-            sk 
+            selectedSessionKey
         )
         .then((res) => {
           let temp = [];
 
-          if( self.liveModeEnabled != requestState){
+          if (self.liveModeEnabled != requestState) {
             return;
           }
 

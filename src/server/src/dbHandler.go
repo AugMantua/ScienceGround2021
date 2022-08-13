@@ -140,6 +140,7 @@ func insertMeasures(db *mongo.Database, ctx context.Context, measures []push_mea
 		updateMeasures = append(updateMeasures, singleMeasure)
 	}
 
+	// Insert new measures
 	var update bson.M
 	var tempUpdate []interface{}
 	for _, t := range updateMeasures {
@@ -149,22 +150,15 @@ func insertMeasures(db *mongo.Database, ctx context.Context, measures []push_mea
 	if err != nil {
 		return err
 	}
-
-	for _, singleMeasure := range updateMeasures {
-		update = bson.M{"$push": bson.M{"measures": singleMeasure}}
-		_, err = db.Collection(_TERRARIUMS_COLLECTION).UpdateByID(ctx, id, update)
-		if err != nil {
-			return err
-		}
-	}
-	update = bson.M{"$set": bson.M{"lastUpdate": updateMeasures, "lastSync": time.Now().Format(time.RFC3339)}}
+	// Update last updateMeasure
+	update = bson.M{
+		"$set": bson.M{
+			"lastUpdate": updateMeasures,
+			"lastSync":   time.Now().Format(time.RFC3339),
+			"updatedOn":  time.Now().Format(time.RFC3339),
+		}}
 	_, err = db.Collection(_TERRARIUMS_COLLECTION).UpdateByID(ctx, id, update)
-	if err != nil {
-		return err
-	}
 
-	// Update UpdatedOn
-	_, err = db.Collection(_TERRARIUMS_COLLECTION).UpdateByID(ctx, id, bson.M{"$set": bson.M{"updatedOn": time.Now().Format(time.RFC3339)}})
 	return err
 }
 
