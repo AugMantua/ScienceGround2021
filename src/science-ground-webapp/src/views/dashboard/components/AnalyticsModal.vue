@@ -119,7 +119,6 @@ import LiveFilters from "./LiveFilters.vue";
 import SensorChart from "./SensorChart.vue";
 import Vue from "vue";
 import moment from "moment";
-import { TaskTimer } from "tasktimer";
 
 export default {
   name: "AnalyticsModal",
@@ -137,9 +136,9 @@ export default {
       terrariumId: "",
       terrariumSensors: [],
       terrariumSession: [],
-      liveTimer: null,
       liveModeEnabled: false,
       selectedSession: undefined,
+      socket: undefined,
 
       from: "",
       to: "",
@@ -177,25 +176,14 @@ export default {
     EventBus.$on("filterUpdated", (value) => {
       self.clearChart();
       if (value.onlyLast != undefined && !value.onlyLast) {
-        self.liveModeEnabled = false;
-        this.liveTimer.stop();
+        self.stopLiveChart();
       } else if (value.onlyLast != undefined && value.onlyLast) {
-        self.liveModeEnabled = true;
         self.startLiveChart();
       } else if (value.to != undefined && value.from != undefined) {
         self.to = value.to;
         self.from = value.from;
         self.getSensorsMeasures();
       }
-    });
-
-    this.liveTimer = new TaskTimer(1000);
-    this.liveTimer.add({
-      id: "live", // unique id of the task
-      tickInterval: 5, // run every 5 ticks (5 x interval = 5000 ms)
-      callback(task) {
-        self.getSensorsMeasures();
-      },
     });
   },
 
@@ -206,9 +194,8 @@ export default {
       this.terrariumSensors = [];
       this.isOpen = false;
       this.liveModeEnabled = false;
-      this.liveTimer.stop();
       this.selectedSession = undefined;
-
+      if(this.socket) this.socket.close();
       if (this.cancelTokenSource != undefined) this.cancelTokenSource.cancel();
     },
     formatDate(date) {
@@ -218,12 +205,51 @@ export default {
     },
     startLiveChart() {
       let self = this;
-
-      this.liveTimer.start();
+      self.liveModeEnabled = true;
+      this.socket = new WebSocket(
+        `${process.env.VUE_APP_WS_URL}/data/terrariums/ws?id=${this.terrariumId}`
+      );
+      this.socket.onerror = (err) => {
+        console.error(err);
+        this.close();
+      };
+      this.socket.onmessage = (messageEvent) => {
+        this.updateSensorsMeasuresFromLiveSocket(JSON.parse(messageEvent.data));
+      };
+    },
+    stopLiveChart() {
+      let self = this;
+      self.liveModeEnabled = false;
+      EventBus.$emit("liveModeStop", { terrariumId: self.terrariumId });
+      if (this.socket) {
+        socket.close();
+      }
     },
     clearChart() {
       EventBus.$emit("updateChart", {
         data: null,
+      });
+    },
+    updateSensorsMeasuresFromLiveSocket(data) {
+      let temp = [];
+      this.terrariumSensors.forEach((el) => {
+        temp[el.ID] = [];
+      });
+      data.forEach((el) => {
+        temp[el.SensorID].push({
+          x: el.Timestamp,
+          y: el.Value,
+        });
+      });
+
+      let tempKeys = Object.keys(temp);
+      tempKeys.forEach((el) => {
+        EventBus.$emit("updateChart", {
+          key: el,
+          data: temp[el],
+          liveMode: this.liveModeEnabled,
+          sensors: this.terrariumSensors,
+        });
       });
     },
     getSensorsMeasures() {
@@ -232,11 +258,13 @@ export default {
       let selectedSessionKey = "";
 
       if (
-        self?.terrariumSession?.length > 0 && 
-        self.selectedSession !== undefined) {
-        selectedSessionKey = self.terrariumSession[self.selectedSession].SessionKey;
+        self?.terrariumSession?.length > 0 &&
+        self.selectedSession !== undefined
+      ) {
+        selectedSessionKey =
+          self.terrariumSession[self.selectedSession].SessionKey;
       }
-      
+
       Vue.axios
         .get(
           "/data/measures/get?TerrariumID=" +

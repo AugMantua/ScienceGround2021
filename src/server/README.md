@@ -7,4 +7,13 @@ This way the image is less than 20MB.
 
 In order to build : docker build --tag science-ground-server .
 
-In order to build with docker-compose in docker run (needed for rancherOS):  ```docker  run  -v `pwd`:`pwd` -v /var/run/docker.sock:/var/run/docker.sock -w `pwd` docker/compose build ```
+In order to build with docker-compose in docker run (needed for rancherOS):  
+
+```
+# clone repo
+docker run -ti --rm -v ${HOME}:/rancher -v $(pwd):/git alpine/git clone https://github.com/AugMantua/ScienceGround2021.git
+# run docker compose build
+docker  run  -v `pwd`:`pwd` -v /var/run/docker.sock:/var/run/docker.sock -w `pwd` docker/compose build
+# run docker compose
+docker  run  -v `pwd`:`pwd` -v /var/run/docker.sock:/var/run/docker.sock -w `pwd` docker/compose up
+```

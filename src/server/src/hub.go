@@ -39,16 +39,14 @@ func (h *Hub) run() {
 				delete(h.clients, client)
 				close(client.send)
 			}
-		case messages := <-h.broadcast:
+		case measures := <-h.broadcast:
 			for client := range h.clients {
-				for _, message := range messages {
-					if message.TerrariumID.Hex() == client.terrariumId {
-						select {
-						case client.send <- message:
-						default:
-							close(client.send)
-							delete(h.clients, client)
-						}
+				if measures[0].TerrariumID.Hex() == client.terrariumId {
+					select {
+					case client.send <- measures:
+					default:
+						close(client.send)
+						delete(h.clients, client)
 					}
 				}
 			}
