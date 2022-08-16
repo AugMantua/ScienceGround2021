@@ -85,6 +85,7 @@ export default {
         res.sensors != null &&
         res.sensors.length == self.series.length
       ) {
+        self.$refs.sensorChart.updateSeries(self.series);
         return;
       }
 
