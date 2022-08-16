@@ -85,6 +85,7 @@ func (c *Client) writePump() {
 	defer func() {
 		ticker.Stop()
 		c.conn.Close()
+		c.hub.unregister <- c
 	}()
 	for {
 		select {

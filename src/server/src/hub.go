@@ -4,6 +4,8 @@
 
 package main
 
+import "log"
+
 // Hub maintains the set of active clients and broadcasts messages to the
 // clients.
 type Hub struct {
@@ -38,6 +40,8 @@ func (h *Hub) run() {
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
 				close(client.send)
+				log.Println("Client stream with terrarium ID : ", client.terrariumId, " disconnected")
+				client = nil
 			}
 		case measures := <-h.broadcast:
 			for client := range h.clients {

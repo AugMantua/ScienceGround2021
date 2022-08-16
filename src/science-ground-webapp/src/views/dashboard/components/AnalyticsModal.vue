@@ -222,7 +222,7 @@ export default {
       self.liveModeEnabled = false;
       EventBus.$emit("liveModeStop", { terrariumId: self.terrariumId });
       if (this.socket) {
-        socket.close();
+        this.socket.close();
       }
     },
     clearChart() {
