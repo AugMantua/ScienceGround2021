@@ -37,7 +37,7 @@ func main() {
 	router.Use(cors.AllowAll())
 
 	// load .env file
-	err := godotenv.Load(".env")
+	err := godotenv.Load("./.env")
 	if err != nil { // we're not in production
 		err = godotenv.Load("../.env.dev") // checking for dev env
 		if err != nil {
