@@ -13,7 +13,7 @@
   import VueAxios from 'vue-axios'
   Vue.use(VueAxios, axios)
 
-  Vue.axios.defaults.baseURL =  'http://localhost:8080' // process.env.VUE_API_BASE_URL;
+  Vue.axios.defaults.baseURL = process.env.VUE_APP_API_BASE_URL;
   Vue.axios.defaults.headers.common['Access-Control-Allow-Origin'] = '*';
   Vue.axios.defaults.headers.common['Content-Type'] = 'application/json';
   export default {

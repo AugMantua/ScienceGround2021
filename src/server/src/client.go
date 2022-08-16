@@ -46,7 +46,7 @@ type Client struct {
 	conn *websocket.Conn
 
 	// Buffered channel of outbound messages.
-	send chan single_measure_data
+	send chan []single_measure_data
 
 	terrariumId string
 }
@@ -139,6 +139,7 @@ func serveWs(c *gin.Context) {
 		return
 	}
 	hub := c.MustGet("hub").(*Hub)
+	upgrader.CheckOrigin = func(r *http.Request) bool { return true } // Allow cors *, quickNDirty
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		log.Println(err)
@@ -147,7 +148,7 @@ func serveWs(c *gin.Context) {
 	client := &Client{
 		hub:         hub,
 		conn:        conn,
-		send:        make(chan single_measure_data, 256),
+		send:        make(chan []single_measure_data, 256),
 		terrariumId: request.ID,
 	}
 	client.hub.register <- client

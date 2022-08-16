@@ -14,7 +14,7 @@ services:
     - 1234:27017
     restart: unless-stopped
 
-  sciengegroundservice: 
+  sciencegroundservice: 
     depends_on:
       - mongodb
     build: .
