@@ -41,7 +41,6 @@ func (h *Hub) run() {
 				delete(h.clients, client)
 				close(client.send)
 				log.Println("Client stream with terrarium ID : ", client.terrariumId, " disconnected")
-				client = nil
 			}
 		case measures := <-h.broadcast:
 			for client := range h.clients {
