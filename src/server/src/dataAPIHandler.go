@@ -76,9 +76,14 @@ type measures_request_typ struct {
 	LastUpdateOnly bool
 }
 
+type wsSubscribeRequestType struct {
+	TerraiumID string
+}
+
 func AddMeasure(c *gin.Context) {
 	dbConnection := c.MustGet("databaseConn").(*mongo.Database)
 	ctx := c.MustGet("databaseCtx").(context.Context)
+	hub := c.MustGet("hub").(*Hub)
 
 	var measures_input measures_data
 	if err := c.ShouldBindJSON(&measures_input); err != nil {
@@ -90,11 +95,13 @@ func AddMeasure(c *gin.Context) {
 		return
 	}
 
-	err := insertMeasures(dbConnection, ctx, measures_input.Data)
+	newMeasuers, err := insertMeasures(dbConnection, ctx, measures_input.Data)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
+	// Update clients registered for terrarium
+	hub.broadcast <- newMeasuers
 }
 
 func RequestMeasures(c *gin.Context) {

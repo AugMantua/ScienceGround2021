@@ -1,7 +1,20 @@
 <template>
-  <v-card outlined :class="!$vuetify.breakpoint.smAndDown ? 'ml-5' : ''" elevation="0" style="border: thin solid #999999;"   :width="!$vuetify.breakpoint.smAndDown ? '80%' :'100%'" >
+  <v-card
+    outlined
+    :class="!$vuetify.breakpoint.smAndDown ? 'ml-5' : ''"
+    elevation="0"
+    style="border: thin solid #999999"
+    :width="!$vuetify.breakpoint.smAndDown ? '80%' : '100%'"
+  >
     <v-card-title outlined class="ma-0 pa-0">Real Time</v-card-title>
-       <v-switch color="red darken-3" label="Guarda in modalità RealTime" inset class="ml-3" @change="changeFilter()"  v-model="liveStatus"></v-switch>
+    <v-switch
+      color="red darken-3"
+      label="Guarda in modalità RealTime"
+      inset
+      class="ml-3"
+      @change="changeFilter()"
+      v-model="liveStatus"
+    ></v-switch>
   </v-card>
 </template>
 
@@ -14,26 +27,19 @@ export default {
   components: {},
   props: ["liveStatus"],
   data() {
-   return{
-   }
+    return {};
   },
-  computed:{
-  
-  },
+  computed: {},
 
-  watch:{
-   
-  },
-  mounted() {
-
-  },
+  watch: {},
+  mounted() {},
   methods: {
     changeFilter() {
       let self = this;
       EventBus.$emit("filterUpdated", {
-        onlyLast: self.liveStatus
+        onlyLast: self.liveStatus,
       });
-    }
-  }
+    },
+  },
 };
 </script>

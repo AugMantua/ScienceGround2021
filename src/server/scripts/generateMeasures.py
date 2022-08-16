@@ -21,7 +21,7 @@ def generateAddRequestFromTerrarium(terrarium):
                     {
                         "TerrariumID": terrarium["ID"],
                         "SensorID": sensor["ID"],
-                        "Value": str(20 + randrange(2)),
+                        "Value": str(20 + randrange(15)),
                         "Timestamp": now.strftime("%Y-%m-%d %H:%M:%S")
                     }
             )
@@ -58,6 +58,7 @@ def liveUpdateSimulation():
 
 def simulateLiveUpdateFromId(terrariumID):
     terrariums = getTerrariumsObjects()
+    print(terrariums)
     for terrarium in terrariums:
         if terrarium['ID'] == terrariumID:
             response = requests.post('http://127.0.0.1:8080/data/terrariums/sessions/start',json={'TerrariumID':terrariumID})
@@ -68,8 +69,9 @@ def simulateLiveUpdateFromId(terrariumID):
                 jsonPayload = genReqPayloadWithSession(terrarium,SessionKey)
                 print("- Sending request - " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                 requests.post('http://127.0.0.1:8080/data/measures/add',json=jsonPayload)
+                time.sleep(5)
 
 
 #liveUpdateSimulation()
-simulateLiveUpdateFromId("6133814483343737296c7c8c")
+simulateLiveUpdateFromId("61277e0986ea4a1397b395ac")
 

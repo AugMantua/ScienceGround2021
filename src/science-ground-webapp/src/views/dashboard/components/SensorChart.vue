@@ -67,27 +67,32 @@ export default {
     reloadAllData(res) {
       let self = this;
 
-      if (res.data == null) {
+      if (res?.data == null) {
         self.loading = false;
         self.series = [];
         return;
       }
 
-      // different chart needed to be update
+      // different chart needs to be updated
       if (
         self.sensorDatas != null &&
         res.key != null &&
         res.key != self.sensorDatas.ID
       ) {
         return;
-      }else if(self.sensorDatas == null && res.sensors != null && res.sensors.length  == self.series.length ){
-        return;
-      }else if(self.sensorDatas != null &&  self.series.length == 1){
+      } else if (
+        self.sensorDatas == null &&
+        res.sensors != null &&
+        res.sensors.length == self.series.length
+      ) {
         return;
       }
 
-      // update multi series chart
-      if ((self.series.length < res.sensors.length || !res.liveMode)  && self.sensorDatas == null) {
+      // init multi series chart
+      if (
+        self.sensorDatas == null && // sensorDatas === null means that sensorChart is a multi series (dati incrociati)
+        (self.series.length < res.sensors.length || !res.liveMode)
+      ) {
         self.loading = false;
 
         let seriesName = "";
@@ -112,6 +117,7 @@ export default {
         return;
       }
 
+      // init single series chart
       self.series.push({
         data: res.data,
         name:
@@ -150,7 +156,7 @@ export default {
 
       if (self.series[seriesPos] != undefined) {
         seriesNumElem = self.series[seriesPos].data.length;
-      } 
+      }
 
       if (
         seriesNumElem == 0 ||

@@ -22,7 +22,17 @@ func DBApiMiddleware(db *mongo.Database, ctx context.Context) gin.HandlerFunc {
 	}
 }
 
+func clientHubMiddleware(hub *Hub) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Set("hub", hub)
+		c.Next()
+	}
+}
+
 func main() {
+
+	hub := newHub()
+	go hub.run()
 
 	router.Use(cors.AllowAll())
 
@@ -46,12 +56,13 @@ func main() {
 	{
 		measures := data.Group("/measures")
 		{
-			measures.POST("/add", AddMeasure)
+			measures.POST("/add", clientHubMiddleware(hub), AddMeasure)
 			measures.GET("/get", RequestMeasures)
 		}
 		terrariums := data.Group("/terrariums")
 		{
 			terrariums.GET("/get", RequestTerrariumsList)
+			terrariums.GET("/ws", clientHubMiddleware(hub), serveWs)
 			sessions := terrariums.Group("/sessions")
 			{
 				sessions.POST("/start", StartSession)
@@ -67,7 +78,7 @@ func main() {
 
 	router.GET("/status", Status)
 
-	router.Run(":8080")
+	router.Run(":" + os.Getenv("SERVER_PORT"))
 
-	log.Fatal(err)
+	log.Fatal(err.Error())
 }
