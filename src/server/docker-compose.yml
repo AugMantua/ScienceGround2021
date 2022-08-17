@@ -1,29 +1,38 @@
 version: "3.8"
 services:
   mongodb:
-    image : mongo
+    image: mongo
     container_name: science-ground-mongodb
     environment:
-    - PUID=1000
-    - PGID=1000
-    - MONGO_INITDB_ROOT_USERNAME=scienceground2021
-    - MONGO_INITDB_ROOT_PASSWORD=KaplulVtxdt0yrNd
+      - PUID=1000
+      - PGID=1000
+      - MONGO_INITDB_ROOT_USERNAME=scienceground2021
+      - MONGO_INITDB_ROOT_PASSWORD=KaplulVtxdt0yrNd
     volumes:
-    - science-ground:/data/db
+      - science-ground:/data/db
     ports:
-    - 1234:27017
+      - 1234:27017
     restart: unless-stopped
 
-  sciencegroundservice: 
+  sciencegroundservice:
     depends_on:
       - mongodb
     build: .
+    deploy:
+      replicas: 3
     environment:
       - ATLAS_URI=mongodb://scienceground2021:KaplulVtxdt0yrNd@mongodb:27017/sciencegroundDB?authSource=admin&readPreference=primary&appname=MongoDB%20Compass&ssl=false
-      - MONGODB_NAME=sciencegroundDB  
+      - MONGODB_NAME=sciencegroundDB
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:latest
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - sciencegroundservice
     ports:
       - "8080:8080"
-    restart: unless-stopped
+
 volumes:
   science-ground: {}
-
