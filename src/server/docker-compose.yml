@@ -19,7 +19,7 @@ services:
       - mongodb
     build: .
     deploy:
-      replicas: 3
+      replicas: 1 #in order to increase the replicas we have to insert a message broker (this is for websocket)
     environment:
       - ATLAS_URI=mongodb://scienceground2021:KaplulVtxdt0yrNd@mongodb:27017/sciencegroundDB?authSource=admin&readPreference=primary&appname=MongoDB%20Compass&ssl=false
       - MONGODB_NAME=sciencegroundDB
