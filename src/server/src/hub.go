@@ -35,12 +35,13 @@ func (h *Hub) run() {
 	for {
 		select {
 		case client := <-h.register:
+			log.Println("Client registered for terrarium ID :", client.terrariumId, "data stream")
 			h.clients[client] = true
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
 				close(client.send)
-				log.Println("Client stream with terrarium ID : ", client.terrariumId, " disconnected")
+				log.Println("Client stream with terrarium ID :", client.terrariumId, "disconnected")
 			}
 		case measures := <-h.broadcast:
 			for client := range h.clients {
