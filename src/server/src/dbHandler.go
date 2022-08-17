@@ -63,6 +63,13 @@ type single_measure_data struct {
 	SessionKey  primitive.ObjectID `bson:"sessionKey,omitempty"`
 }
 
+type single_measure_data_dto struct {
+	SensorID   primitive.ObjectID `bson:"sensorId,omitempty"`
+	Value      string             `bson:"value,omitempty"`
+	Timestamp  string             `bson:"timestamp,omitempty"`
+	SessionKey primitive.ObjectID `bson:"sessionKey,omitempty"`
+}
+
 type push_measure_request_typ struct {
 	TerrariumID string `bson:"terrariumId"`
 	SensorID    string `bson:"sensorId,omitempty"`
@@ -179,10 +186,8 @@ func dataDBinit(dbPath string) (*mongo.Database, context.Context) {
 }
 
 /*Extract measures*/
-func getMeasures(db *mongo.Database, request measures_request_typ, ctx context.Context) ([]single_measure_data, error) {
-	var result []single_measure_data
-	var empty []single_measure_data
-	var tempTerrarium terrariumData
+func getMeasures(db *mongo.Database, request measures_request_typ, ctx context.Context) ([]single_measure_data_dto, error) {
+	var result []single_measure_data_dto
 	var filter = bson.M{}
 
 	if request.SensorID != "" {
@@ -210,32 +215,16 @@ func getMeasures(db *mongo.Database, request measures_request_typ, ctx context.C
 		idSession, _ := primitive.ObjectIDFromHex(request.SessionKey)
 		filter["sessionKey"] = idSession
 	}
-	if request.LastUpdateOnly {
-		id, _ := primitive.ObjectIDFromHex(request.TerrariumID)
-		err := db.Collection(_TERRARIUMS_COLLECTION).FindOne(ctx, bson.M{"_id": id}).Decode(&tempTerrarium)
-		if err != nil {
-			return empty, err
-		}
 
-		if request.SensorID != "" {
-			for _, measure := range tempTerrarium.LastUpdate {
-				if measure.SensorID.Hex() == request.SensorID {
-					result = append(result, measure)
-				}
-			}
-		} else {
-			result = tempTerrarium.LastUpdate
-		}
-
-	} else {
-		measuresCollection := db.Collection(_MEASURES_COLLECTION)
-		cursor, err := measuresCollection.Find(ctx, filter)
-		if err != nil {
-			panic(err)
-		}
-		if err = cursor.All(ctx, &result); err != nil {
-			panic(err)
-		}
+	measuresCollection := db.Collection(_MEASURES_COLLECTION)
+	var options options.FindOptions
+	options.Projection = bson.M{"terrariumId": 0, "_id": 0}
+	cursor, err := measuresCollection.Find(ctx, filter, &options)
+	if err != nil {
+		panic(err)
+	}
+	if err = cursor.All(ctx, &result); err != nil {
+		panic(err)
 	}
 
 	return result, nil
