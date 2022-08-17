@@ -8,7 +8,7 @@ from requests.api import request
 
 DEV_MODE = True
 
-DATA_SERVICE_URL = 'http://138.197.180.56:8080' if DEV_MODE is False else  "http://localhost:8080"
+DATA_SERVICE_URL = 'http://138.197.180.56:8080' if DEV_MODE is False else  "http://localhost:2020"
 
 TERRARIUMS_GET_API = '/data/terrariums/get'
 SESSION_START_API = '/data/terrariums/sessions/start'
