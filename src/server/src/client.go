@@ -85,6 +85,7 @@ func (c *Client) writePump() {
 	defer func() {
 		ticker.Stop()
 		c.conn.Close()
+		c.hub.unregister <- c
 	}()
 	for {
 		select {
@@ -133,7 +134,6 @@ type websocketTerrariumStreamRequest struct {
 func serveWs(c *gin.Context) {
 
 	var request websocketTerrariumStreamRequest
-	log.Println(c.Request.URL.Query())
 	if err := c.BindQuery(&request); err != nil {
 		c.JSON(http.StatusUnprocessableEntity, "Invalid query provided")
 		return
