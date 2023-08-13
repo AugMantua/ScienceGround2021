@@ -100,13 +100,13 @@ int CO2;
 //const char* server = "lucacarre2400.ddns.net";    // server's address
 const char* server = "192.168.47.90";               // server's address
 const int serverPort = 8080;                        // server port
-const char* resource = "/data/measures/add";        // resource requested
+const char* resource = "/data/measures";        // resource requested
 const char* login = "/devices/auth";                // auth API
 const char* startSession = "/data/terrariums/sessions/start"; //start session API
 StaticJsonDocument<1024> authResponse;              // global var -> used in the main loop to extract login infos
 StaticJsonDocument<512> sessionApiResponse;
 String globalSession;                               // global session
-//const char* resource = "/data/terrariums/get";    // resource requested
+//const char* resource = "/data/terrariums";    // resource requested
 
 int i = 0;
 byte resp[BL];

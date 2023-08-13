@@ -45,7 +45,7 @@ export default {
     let self = this;
 
     Vue.axios
-      .get("/data/terrariums/get")
+      .get("/data/terrariums")
       .then((res) => {
         self.finishLoading = true;
         console.log(res);

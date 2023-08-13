@@ -56,12 +56,12 @@ func main() {
 	{
 		measures := data.Group("/measures")
 		{
-			measures.POST("/add", clientHubMiddleware(hub), AddMeasure)
-			measures.GET("/get", RequestMeasures)
+			measures.POST("", clientHubMiddleware(hub), AddMeasure)
+			measures.GET("", RequestMeasures)
 		}
 		terrariums := data.Group("/terrariums")
 		{
-			terrariums.GET("/get", RequestTerrariumsList)
+			terrariums.GET("", RequestTerrariumsList)
 			terrariums.GET("/ws", clientHubMiddleware(hub), serveWs)
 			sessions := terrariums.Group("/sessions")
 			{

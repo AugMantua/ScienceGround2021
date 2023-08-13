@@ -267,7 +267,7 @@ export default {
 
       Vue.axios
         .get(
-          "/data/measures/get?TerrariumID=" +
+          "/data/measures?TerrariumID=" +
             self.terrariumId +
             "&From=" +
             self.from +
