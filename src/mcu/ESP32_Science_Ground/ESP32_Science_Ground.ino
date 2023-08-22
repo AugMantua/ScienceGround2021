@@ -12,6 +12,25 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h> //v6
 
+
+/*************************************************/
+/*************** SENSORS DEFS #BEG ***************/
+
+#define SHT2X 0
+#define SHT1X 1
+
+#define MOIST_SENSOR SHT1X
+
+#if MOIST_SENSOR == SHT1X
+#include <SHT1x-ESP.h>
+
+// default to 5.0v boards, e.g. Arduino UNO
+SHT1x sht1x(21, 22);
+#endif
+
+/*************** SENSORS DEFS #END ***************/
+/*************************************************/
+
 WiFiClient client;
 HTTPClient http;
 
@@ -97,8 +116,8 @@ float dew_pointC;
 float RH;
 int CO2;
 
-//const char* server = "lucacarre2400.ddns.net";    // server's address
-const char* server = "192.168.47.90";               // server's address
+const char* server = "lucacarre2400.ddns.net";    // server's address
+//const char* server = "192.168.47.90";               // server's address
 const int serverPort = 8080;                        // server port
 const char* resource = "/data/measures";        // resource requested
 const char* login = "/devices/auth";                // auth API
@@ -135,6 +154,7 @@ void IRAM_ATTR startNewSession_ISR()
 
 void IRAM_ATTR stopSession_ISR()
 {
+    Serial.println("Stop session interrupt");
     startSessionFlag = false;
     stopSessionFlag = true;
 }
@@ -157,8 +177,8 @@ void ledTask(void *you_need_this){
     }else{
       digitalWrite(GPIO_START_SESSION_LED,false);
     }
+    delay(1000);
   }
-  delay(1000);
 }
 
 void mainTask(void *you_need_this){
@@ -226,6 +246,7 @@ void mainTask(void *you_need_this){
           if(startSessionFlag){
             if(requestNewSession(authResponse["ID"].as<String>(),&session_state)){
               startSessionFlag = false;
+              session_state = 0;
             }
           }else{
             stato_macchina = WIFI_CONNECTING;
@@ -424,18 +445,17 @@ void mainTask(void *you_need_this){
       default:
         break;
     }
-    
-    delay(10);
+    delay(100);
   }
 }
 
 void setup() {
   Serial.begin(115200);                         // Seriale standard per la comunicazione di debug
   Serial2.begin(9600, SERIAL_8N1, RXD2, TXD2);  // Seriale 2 usata per connettersi al sensore MH-Z19B
-
-  Wire.begin();                                 // Inizializzazione I2C usata per SHT20
-  shtBegin();                                   // Inizializzazione sensore SHT20
-
+  
+  #if MOIST_SENSOR == SHT2X
+  sht2XBegin();                                   // Inizializzazione sensore SHT20
+  #endif
   byte buf[BL] = CMD_ABC_OFF;                   // We are setting Automatic Baseline Correction to OFF
   sendCmdToMhz19(buf);
   cmdSent = false;                              // ready to process new commands on MH-Z19B (to be changed, absorbed by state machine) 
@@ -458,7 +478,7 @@ void setup() {
     ,  "mainTask"   // A name just for humans
     ,  10240  // This stack size can be checked & adjusted by reading the Stack Highwater
     ,  NULL
-    ,  2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+    ,  0  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
     ,  NULL);
 
     xTaskCreate(
@@ -466,7 +486,7 @@ void setup() {
     ,  "ledTask"   // A name just for humans
     ,  1024  // This stack size can be checked & adjusted by reading the Stack Highwater
     ,  NULL
-    ,  2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+    ,  1    // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
     ,  NULL);
 
 }
@@ -565,8 +585,13 @@ float shtHumidity()
 
 float shtVpd()
 {
+  #if MOIST_SENSOR == SHT1X
+  tempC = sht1x.readTemperatureC();
+  RH = sht1x.readHumidity();
+  #else
   tempC = shtTemperature();
   RH = shtHumidity();
+  #endif
 
   float es = 0.6108 * exp(17.27 * tempC / (tempC + 237.3));
   float ae = RH / 100 * es;
@@ -577,9 +602,13 @@ float shtVpd()
 
 float shtDew_point()
 {
+  #if MOIST_SENSOR == SHT1X
+  tempC = sht1x.readTemperatureC();
+  RH = sht1x.readHumidity();
+  #else
   tempC = shtTemperature();
   RH = shtHumidity();
-
+  #endif
   float tem = -1.0 * tempC;
   float esdp = 6.112 * exp(-1.0 * 17.67 * tem / (243.5 - tem));
   float ed = RH / 100.0 * esdp;
@@ -589,8 +618,9 @@ float shtDew_point()
   return dew_pointC;
 }
 
-bool shtBegin()
+bool sht2XBegin()
 {
+  Wire.begin();                                 // Inizializzazione I2C usata per SHT20
   _address = SHT20_I2C;
   _resolution = SHT20_RESOLUTION_12BITS;
   _i2cPort = &Wire;
@@ -600,9 +630,8 @@ bool shtBegin()
 
 void shtMeasure_all()
 {
-  // also measures temp/humidity
-  shtVpd();
-  shtDew_point();
+    shtVpd();
+    shtDew_point();
 }
 
 
@@ -775,9 +804,7 @@ bool tryAuth(String* _terrariumId, int* auth_step){
     case (AUTH_CLOSE):                     // Status used when disconnecting from the Wi-Fi network
       {
         Serial.println("STATUS: AUTH_CLOSE");
-        if (WiFi.status() == WL_CONNECTED){
-          WiFi.disconnect();
-        }
+        WiFi.disconnect();
         return true;
       }
       break;
@@ -900,10 +927,8 @@ bool requestNewSession(String _terrariumId, int* session_step){
 
       case (SESSION_CLOSE):                     // Status used when disconnecting from the Wi-Fi network
         {
-          Serial.println("STATUS: AUTH_CLOSE");
-          if (WiFi.status() == WL_CONNECTED){
-            WiFi.disconnect();
-          }
+          Serial.println("STATUS: SESSION CLOSE");
+          WiFi.disconnect();
           return true;
         }
   }
