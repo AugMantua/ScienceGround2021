@@ -326,6 +326,7 @@ func tryTerrariumLogin(db *mongo.Database, ctx context.Context, request terrariu
 	return terrarium, nil
 }
 
+// FIXME: avoid saving unauth terrariums if already present
 func saveUnauthAttempt(db *mongo.Database, ctx context.Context, request terrariumCredentials) error {
 	unauthTerrariums := db.Collection(_TERRARIUMS_COLLECTION)
 

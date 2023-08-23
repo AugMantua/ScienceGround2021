@@ -69,7 +69,7 @@ char response[800]; // this fixed sized buffers works well for this project usin
 int stato_macchina = INIT;
 int auth_state = 0;
 int session_state = 0;
-const char* ssid     = "Pie";
+const char* ssid     = "Pie_2";
 const char* password = "prova123";
 
 #define RXD2 16
@@ -116,8 +116,7 @@ float dew_pointC;
 float RH;
 int CO2;
 
-const char* server = "lucacarre2400.ddns.net";    // server's address
-//const char* server = "192.168.47.90";               // server's address
+const char* server = "46.101.232.24";    // server's address
 const int serverPort = 8080;                        // server port
 const char* resource = "/data/measures";        // resource requested
 const char* login = "/devices/auth";                // auth API
@@ -299,7 +298,7 @@ void mainTask(void *you_need_this){
             return;
           } else {
             Serial.println("*** Got time");
-            char buf[15];
+            char buf[30];
             strftime(buf, 30, "%Y-%m-%d %H:%M:%S", &timeinfo);
             orario = (String) buf;
             Serial.println("Time:" + orario);
@@ -711,7 +710,7 @@ bool tryAuth(String* _terrariumId, int* auth_step){
       doc["MACAddres"] = wifiMacString;
       doc["MagicKey"] = _MAGIC_KEY;
       doc["TypeOfTerrarium"] = _TYPE_OF_TERRARIUM;
-      doc["TerrariumAlias"] = _TERRARIUM_ALIAS;
+      doc["TerrariumAlias"] = wifiMacString; // _TERRARIUM_ALIAS; in order to semplify terrariums gestion we set Alias using MACAddress TODO: remove gestion server-side
     
       sensorsArray[0]["Name"] = "Internal temperature sensor";
       sensorsArray[0]["TypeOfMeasure"] = "Temperature_1";
