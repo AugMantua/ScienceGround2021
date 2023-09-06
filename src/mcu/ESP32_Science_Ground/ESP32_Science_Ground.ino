@@ -69,8 +69,8 @@ char response[800];                       // this fixed sized buffers works well
 int stato_macchina = INIT;
 int auth_state = 0;
 int session_state = 0;
-const char *ssid = "Pie_2";
-const char *password = "prova123";
+const char *ssid = "TP-Link_Jamiro";
+const char *password = "ciaociao";
 
 #define RXD2 16
 #define TXD2 17
