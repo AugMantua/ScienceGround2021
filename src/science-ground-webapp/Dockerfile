@@ -1,4 +1,5 @@
-FROM node:lts-alpine as build-stage
+FROM node:14-alpine as build-stage
+RUN apk update && apk add --no-cache python3 make g++
 WORKDIR /app
 COPY package*.json ./
 RUN npm install
