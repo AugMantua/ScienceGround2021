@@ -1,26 +1,16 @@
 <template>
-  <v-dialog
-    v-model="isOpen"
-    fullscreen
-    hide-overlay
-    transition="dialog-bottom-transition"
-  >
+  <v-dialog v-model="isOpen" fullscreen hide-overlay transition="dialog-bottom-transition">
     <v-card>
       <v-toolbar height="35" dark color="primary">
         <v-btn icon dark @click="close()">
           <v-icon>mdi-close</v-icon>
         </v-btn>
-        <v-toolbar-title class="pa-0"
-          >Andamento del terrario: {{ terrariumName }}</v-toolbar-title
-        >
+        <v-toolbar-title class="pa-0">Andamento del terrario: {{ terrariumName }}</v-toolbar-title>
       </v-toolbar>
 
       <v-row no-gutters class="pa-1">
         <!-- GRAFICI -->
-        <v-col
-          :cols="!$vuetify.breakpoint.smAndDown ? '9' : '12'"
-          :class="!$vuetify.breakpoint.smAndDown ? 'mt-4' : ''"
-        >
+        <v-col :cols="!$vuetify.breakpoint.smAndDown ? '9' : '12'" :class="!$vuetify.breakpoint.smAndDown ? 'mt-4' : ''">
           <v-card elevation="0">
             <v-container style="border: thin solid #999999" elevation="1">
               <v-tabs v-model="tabs" center-active>
@@ -32,60 +22,31 @@
 
               <v-tabs-items v-model="tabs">
                 <v-tab-item key="0">
-                  <sensorchart
-                    v-bind:terrariumId="terrariumId"
-                    v-bind:sensorDatas="null"
-                    v-if="isOpen"
-                  />
+                  <sensorchart v-bind:terrariumId="terrariumId" v-bind:sensorDatas="null" v-if="isOpen" />
                 </v-tab-item>
-                <v-tab-item
-                  v-for="item in terrariumSensors"
-                  :key="item.ID"
-                  :eager="true"
-                >
-                  <sensorchart
-                    v-bind:terrariumId="terrariumId"
-                    v-bind:sensorDatas="item"
-                  />
+                <v-tab-item v-for="item in terrariumSensors" :key="item.ID" :eager="true">
+                  <sensorchart v-bind:terrariumId="terrariumId" v-bind:sensorDatas="item" />
                 </v-tab-item>
               </v-tabs-items>
             </v-container>
           </v-card>
         </v-col>
         <!-- FILTRI -->
-        <v-col
-          :cols="!$vuetify.breakpoint.smAndDown ? '3' : '12'"
-          class="d-flex flex-column"
-          :class="
-            !$vuetify.breakpoint.smAndDown
-              ? 'mt-5 d-flex align-start'
-              : 'mt-2 d-flex align-start'
-          "
-        >
+        <v-col :cols="!$vuetify.breakpoint.smAndDown ? '3' : '12'" class="d-flex flex-column" :class="!$vuetify.breakpoint.smAndDown
+          ? 'mt-5 d-flex align-start'
+          : 'mt-2 d-flex align-start'
+          ">
           <timefilters v-if="isOpen" />
           <livefilters v-bind:liveStatus="liveModeEnabled" />
 
           <template>
-            <v-card
-              outlined
-              :class="
-                !$vuetify.breakpoint.smAndDown
-                  ? 'ml-5 mt-2 justify-center'
-                  : 'mt-2 justify-center'
-              "
-              elevation="0"
-              style="border: thin solid #999999"
-              :width="!$vuetify.breakpoint.smAndDown ? '80%' : '100%'"
-            >
-              <v-card-title outlined class="ma-0 pa-0"
-                >Sessioni Dimostrative</v-card-title
-              >
-              <v-list
-                dense
-                class="mb-1 mt-2 pa-0 overflow-y-auto"
-                style="max-height: 400px"
-                rounded
-              >
+            <v-card outlined :class="!$vuetify.breakpoint.smAndDown
+              ? 'ml-5 mt-2 justify-center'
+              : 'mt-2 justify-center'
+              " elevation="0" style="border: thin solid #999999"
+              :width="!$vuetify.breakpoint.smAndDown ? '80%' : '100%'">
+              <v-card-title outlined class="ma-0 pa-0">Sessioni Dimostrative</v-card-title>
+              <v-list dense class="mb-1 mt-2 pa-0 overflow-y-auto" style="max-height: 400px" rounded>
                 <v-list-item style="width: 100%">
                   <v-list-item-group color="primary" v-model="selectedSession">
                     <v-list-item v-for="(item, i) in terrariumSession" :key="i">
@@ -93,11 +54,9 @@
                         <v-icon>mdi-access-point</v-icon>
                       </v-list-item-icon>
                       <v-list-item-content>
-                        <v-list-item-title class="font-weight-black"
-                          >Da: {{ formatDate(item.TimestampStart) }}
-                          {{ "                 " }} A:
-                          {{ formatDate(item.TimestampEnd) }}</v-list-item-title
-                        >
+                        <v-list-item-title class="font-weight-black">Da: {{ formatDate(item.TimestampStart) }}
+                          {{ " " }} A:
+                          {{ formatDate(item.TimestampEnd) }}</v-list-item-title>
                       </v-list-item-content>
                     </v-list-item>
                   </v-list-item-group>
@@ -139,6 +98,7 @@ export default {
       liveModeEnabled: false,
       selectedSession: undefined,
       socket: undefined,
+      socketTimer: undefined,
 
       from: "",
       to: "",
@@ -195,8 +155,9 @@ export default {
       this.isOpen = false;
       this.liveModeEnabled = false;
       this.selectedSession = undefined;
-      if(this.socket) this.socket.close();
+      if (this.socket) this.socket.close();
       if (this.cancelTokenSource != undefined) this.cancelTokenSource.cancel();
+      if ( this.socketTimer != undefined) clearInterval(this.socketTimer);
     },
     formatDate(date) {
       if (date == "") return "--/--/--/ --:--";
@@ -216,10 +177,20 @@ export default {
       this.socket.onmessage = (messageEvent) => {
         this.updateSensorsMeasuresFromLiveSocket(JSON.parse(messageEvent.data));
       };
+      this.socketTimer = setInterval(() => {
+        if (self.socket.readyState === WebSocket.CLOSED || self.socket.readyState === WebSocket.CLOSING) {
+          console.log('WebSocket disconnected. Attempting to reconnect...');
+          initWebSocket();
+        } else {
+          this.socket.send("pong");
+        }
+      }, 5000);
     },
     stopLiveChart() {
       let self = this;
       self.liveModeEnabled = false;
+      clearInterval(this.socketTimer);
+      this.socketTimer = undefined;
       EventBus.$emit("liveModeStop", { terrariumId: self.terrariumId });
       if (this.socket) {
         this.socket.close();
@@ -268,15 +239,15 @@ export default {
       Vue.axios
         .get(
           "/data/measures?TerrariumID=" +
-            self.terrariumId +
-            "&From=" +
-            self.from +
-            "&To=" +
-            self.to +
-            "&LastUpdateOnly=" +
-            self.liveModeEnabled +
-            "&SessionKey=" +
-            selectedSessionKey
+          self.terrariumId +
+          "&From=" +
+          self.from +
+          "&To=" +
+          self.to +
+          "&LastUpdateOnly=" +
+          self.liveModeEnabled +
+          "&SessionKey=" +
+          selectedSessionKey
         )
         .then((res) => {
           let temp = [];
