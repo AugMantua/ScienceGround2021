@@ -6,9 +6,9 @@ import threading
 
 from requests.api import request
 
-DEV_MODE = True
+DEV_MODE = False
 
-DATA_SERVICE_URL = 'http://138.197.180.56:8080' if DEV_MODE is False else  "http://localhost:8080"
+DATA_SERVICE_URL = 'http://46.101.232.24:8080' if DEV_MODE is False else  "http://localhost:8080"
 
 TERRARIUMS_GET_API = '/data/terrariums'
 SESSION_START_API = '/data/terrariums/sessions/start'
@@ -64,7 +64,7 @@ def liveUpdateSimulation():
             print("- Sending request - " +
                   datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
             requests.post(DATA_SERVICE_URL+ADD_MEASURE_API, json=jsonPayload)
-        time.sleep(5)
+        time.sleep(10)
 
 
 def simulateLiveUpdateFromId(terrariumID):
