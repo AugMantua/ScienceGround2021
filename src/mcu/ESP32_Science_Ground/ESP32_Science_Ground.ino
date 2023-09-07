@@ -69,8 +69,10 @@ char response[800];                       // this fixed sized buffers works well
 int stato_macchina = INIT;
 int auth_state = 0;
 int session_state = 0;
-const char *ssid = "TP-Link_Jamiro";
-const char *password = "ciaociao";
+const char *ssid = "WIFI_POMPONAZZO";
+const char *password = "pomponazzo2015";
+//const char *ssid = "TP-LINK_Jamiro";
+//const char *password = "ciaociao";
 
 #define RXD2 16
 #define TXD2 17
@@ -347,7 +349,7 @@ void mainTask(void *you_need_this)
       {
         Serial.println("*** Failed to obtain time");
         stato_macchina = NTP_GET_TIME;
-        return;
+        break;
       }
       else
       {
