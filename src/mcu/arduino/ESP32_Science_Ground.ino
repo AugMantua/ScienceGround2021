@@ -69,10 +69,8 @@ char response[800];                       // this fixed sized buffers works well
 int stato_macchina = INIT;
 int auth_state = 0;
 int session_state = 0;
-const char *ssid = "WIFI_POMPONAZZO";
-const char *password = "pomponazzo2015";
-//const char *ssid = "TP-LINK_Jamiro";
-//const char *password = "ciaociao";
+const char *ssid = "TP-Link_Jamiro";
+const char *password = "ciaociao";
 
 #define RXD2 16
 #define TXD2 17
@@ -260,6 +258,9 @@ void mainTask(void *you_need_this)
     {
       Serial.println("STATUS: REQUEST_MH_Z19B");
       byte buf[BL] = CMD_READCO2;
+      while(Serial2.available() > 0) { // FIXME: add this to a util function
+        char t = Serial.read();
+      }
       sendCmdToMhz19(buf);
       stato_macchina = RECEIVING_MH_Z19B;
       Serial.println("STATUS: RECEIVING_MH_Z19B");
@@ -286,6 +287,12 @@ void mainTask(void *you_need_this)
     case (RECEIVED_MH_Z19B): // Status used to print measurements from MH-Z19B
     {
       Serial.println("STATUS: RECEIVED_MH_Z19B");
+      int crc = getCheckSum((char *)resp);
+      if(crc != resp[8]){
+        Serial.println("CRC error");
+        stato_macchina = REQUEST_MH_Z19B;
+        break;
+      }
       CO2 = resp[2] * 256 + resp[3];
       Serial.print("Concentrazione CO2: ");
       Serial.println((String)CO2);
@@ -348,8 +355,10 @@ void mainTask(void *you_need_this)
       if (!getLocalTime(&timeinfo))
       {
         Serial.println("*** Failed to obtain time");
+        Serial.println("*** Retry in 3s");
+        delay(3000)
         stato_macchina = NTP_GET_TIME;
-        break;
+        return;
       }
       else
       {
