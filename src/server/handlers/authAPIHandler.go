@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 func AuthRequest(c *gin.Context) {
 	dbConnection := c.MustGet("databaseConn").(*mongo.Database)
 	ctx := c.MustGet("databaseCtx").(context.Context)
-	var request terrariumCredentials
+	var request TerrariumCredentials
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusUnprocessableEntity, "Invalid json provided")
 		return

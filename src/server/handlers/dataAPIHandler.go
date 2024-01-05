@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"context"
@@ -85,7 +85,7 @@ func AddMeasure(c *gin.Context) {
 	ctx := c.MustGet("databaseCtx").(context.Context)
 	hub := c.MustGet("hub").(*Hub)
 
-	var measures_input measures_data
+	var measures_input Measures_data
 	if err := c.ShouldBindJSON(&measures_input); err != nil {
 		c.JSON(http.StatusUnprocessableEntity, "Invalid json provided")
 		return
@@ -101,7 +101,7 @@ func AddMeasure(c *gin.Context) {
 		return
 	}
 	// Update clients registered for terrarium
-	hub.broadcast <- newMeasuers
+	hub.Broadcast <- newMeasuers
 }
 
 func RequestMeasures(c *gin.Context) {
@@ -146,7 +146,7 @@ func StartSession(c *gin.Context) {
 		return
 	}
 
-	sessionKey, err := createSession(dbConnection, ctx, sessionRequest.TerrariumID)
+	sessionKey, err := CreateSession(dbConnection, ctx, sessionRequest.TerrariumID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, err)
 		return

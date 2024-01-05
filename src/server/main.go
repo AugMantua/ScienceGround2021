@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"server/handlers"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -22,7 +23,8 @@ func DBApiMiddleware(db *mongo.Database, ctx context.Context) gin.HandlerFunc {
 	}
 }
 
-func clientHubMiddleware(hub *Hub) gin.HandlerFunc {
+func clientHubMiddleware(hub *handlers.Hub) gin.HandlerFunc {
+
 	return func(c *gin.Context) {
 		c.Set("hub", hub)
 		c.Next()
@@ -31,8 +33,8 @@ func clientHubMiddleware(hub *Hub) gin.HandlerFunc {
 
 func main() {
 
-	hub := newHub()
-	go hub.run()
+	hub := handlers.NewHub()
+	go hub.Run()
 
 	router.Use(cors.AllowAll())
 
@@ -47,7 +49,7 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	mongo_connection, context := dataDBinit(os.Getenv("MONGODB"))
+	mongo_connection, context := handlers.DataDBinit(os.Getenv("MONGODB"))
 
 	//Closes db at the end of main
 	defer mongo_connection.Client().Disconnect(context)
@@ -56,27 +58,27 @@ func main() {
 	{
 		measures := data.Group("/measures")
 		{
-			measures.POST("", clientHubMiddleware(hub), AddMeasure)
-			measures.GET("", RequestMeasures)
+			measures.POST("", clientHubMiddleware(hub), handlers.AddMeasure)
+			measures.GET("", handlers.RequestMeasures)
 		}
 		terrariums := data.Group("/terrariums")
 		{
-			terrariums.GET("", RequestTerrariumsList)
-			terrariums.GET("/ws", clientHubMiddleware(hub), serveWs)
+			terrariums.GET("", handlers.RequestTerrariumsList)
+			terrariums.GET("/ws", clientHubMiddleware(hub), handlers.ServeWs)
 			sessions := terrariums.Group("/sessions")
 			{
-				sessions.POST("/start", StartSession)
-				sessions.POST("/stop", StopSession)
+				sessions.POST("/start", handlers.StartSession)
+				sessions.POST("/stop", handlers.StopSession)
 			}
 		}
 	}
 
 	devices := router.Group("/devices", DBApiMiddleware(mongo_connection, context))
 	{
-		devices.POST("/auth", AuthRequest)
+		devices.POST("/auth", handlers.AuthRequest)
 	}
 
-	router.GET("/status", Status)
+	router.GET("/status", handlers.Status)
 
 	router.Run(":" + os.Getenv("SERVER_PORT"))
 
