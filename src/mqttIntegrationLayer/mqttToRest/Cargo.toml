@@ -1,0 +1,10 @@
+[package]
+name = "mqttToRest"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+mqttRouter = { path = "../mqttRouter" }
+rumqttc = "0.11"  # Check for the latest version
+regex = "1.5"     # Check for the latest version
+tokio = { version = "1", features = ["full"] }
