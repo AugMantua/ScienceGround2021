@@ -1,6 +1,6 @@
+use regex::Regex;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
-use regex::Regex;
 
 pub type HandlerFunction = Arc<dyn Fn(&str, &[u8]) + Send + Sync>;
 
@@ -37,7 +37,9 @@ impl MqttRouter {
             }
         }
 
-        let matched_handler = self.handlers.iter()
+        let matched_handler = self
+            .handlers
+            .iter()
             .find(|(pattern, _)| pattern.is_match(topic))
             .map(|(_, handler)| handler.clone());
 
@@ -51,44 +53,53 @@ impl MqttRouter {
     }
 }
 
-#[test]
-fn test_new() {
-    let router = MqttRouter::new();
-    assert!(router.handlers.is_empty());
-    assert!(router.cache.read().unwrap().is_empty());
-}
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
 
-#[test]
-fn test_add_handler() {
-    let mut router = MqttRouter::new();
-    let handler: HandlerFunction = Arc::new(|_, _| {});
-    let pattern = Regex::new("test").unwrap();
-    router.add_handler(pattern.clone(), handler.clone());
-    assert_eq!(router.handlers.len(), 1);
-    assert_eq!(router.handlers[0].0.as_str(), pattern.as_str());
-    assert!(Arc::ptr_eq(&router.handlers[0].1, &handler));
-}
+    use regex::Regex;
 
-#[test]
-fn test_route_message() {
-    let mut router = MqttRouter::new();
-    let handler: HandlerFunction = Arc::new(|topic, payload| {
-        assert_eq!(topic, "test");
-        assert_eq!(payload, b"payload");
-    });
-    router.add_handler(Regex::new("test").unwrap(), handler);
-    router.route_message("test", b"payload");
-}
+    use crate::{MqttRouter, HandlerFunction};
 
-#[test]
-fn test_get_handler_for_topic() {
-    let mut router = MqttRouter::new();
-    let handler: HandlerFunction = Arc::new(|_, _| {});
-    router.add_handler(Regex::new("test").unwrap(), handler.clone());
-    assert!(router.get_handler_for_topic("test").is_some());
-    assert!(Arc::ptr_eq(
-        &router.get_handler_for_topic("test").unwrap(),
-        &handler
-    ));
-    assert!(router.get_handler_for_topic("nonexistent").is_none());
+    #[test]
+    fn test_new() {
+        let router = MqttRouter::new();
+        assert!(router.handlers.is_empty());
+        assert!(router.cache.read().unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_add_handler() {
+        let mut router = MqttRouter::new();
+        let handler: HandlerFunction = Arc::new(|_, _| {});
+        let pattern = Regex::new("test").unwrap();
+        router.add_handler(pattern.clone(), handler.clone());
+        assert_eq!(router.handlers.len(), 1);
+        assert_eq!(router.handlers[0].0.as_str(), pattern.as_str());
+        assert!(Arc::ptr_eq(&router.handlers[0].1, &handler));
+    }
+
+    #[test]
+    fn test_route_message() {
+        let mut router = MqttRouter::new();
+        let handler: HandlerFunction = Arc::new(|topic, payload| {
+            assert_eq!(topic, "test");
+            assert_eq!(payload, b"payload");
+        });
+        router.add_handler(Regex::new("test").unwrap(), handler);
+        router.route_message("test", b"payload");
+    }
+
+    #[test]
+    fn test_get_handler_for_topic() {
+        let mut router = MqttRouter::new();
+        let handler: HandlerFunction = Arc::new(|_, _| {});
+        router.add_handler(Regex::new("test").unwrap(), handler.clone());
+        assert!(router.get_handler_for_topic("test").is_some());
+        assert!(Arc::ptr_eq(
+            &router.get_handler_for_topic("test").unwrap(),
+            &handler
+        ));
+        assert!(router.get_handler_for_topic("nonexistent").is_none());
+    }
 }
