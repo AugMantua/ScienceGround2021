@@ -1,8 +1,4 @@
-// Copyright 2013 The Gorilla WebSocket Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
-
-package main
+package handlers
 
 import (
 	"encoding/json"
@@ -46,7 +42,7 @@ type Client struct {
 	conn *websocket.Conn
 
 	// Buffered channel of outbound messages.
-	send chan []single_measure_data
+	send chan []Single_measure_data
 
 	terrariumId string
 }
@@ -58,7 +54,7 @@ type Client struct {
 // reads from this goroutine.
 func (c *Client) readPump() {
 	defer func() {
-		c.hub.unregister <- c
+		c.hub.Unregister <- c
 		c.conn.Close()
 	}()
 	c.conn.SetReadLimit(maxMessageSize)
@@ -85,7 +81,7 @@ func (c *Client) writePump() {
 	defer func() {
 		ticker.Stop()
 		c.conn.Close()
-		c.hub.unregister <- c
+		c.hub.Unregister <- c
 	}()
 	for {
 		select {
@@ -131,7 +127,7 @@ type websocketTerrariumStreamRequest struct {
 }
 
 // serveWs handles websocket requests from the peer.
-func serveWs(c *gin.Context) {
+func ServeWs(c *gin.Context) {
 
 	var request websocketTerrariumStreamRequest
 	if err := c.BindQuery(&request); err != nil {
@@ -148,10 +144,10 @@ func serveWs(c *gin.Context) {
 	client := &Client{
 		hub:         hub,
 		conn:        conn,
-		send:        make(chan []single_measure_data, 256),
+		send:        make(chan []Single_measure_data, 256),
 		terrariumId: request.ID,
 	}
-	client.hub.register <- client
+	client.hub.Register <- client
 
 	// Allow collection of memory referenced by the caller by doing all work in
 	// new goroutines.

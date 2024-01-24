@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"context"
@@ -85,7 +85,7 @@ func AddMeasure(c *gin.Context) {
 	ctx := c.MustGet("databaseCtx").(context.Context)
 	hub := c.MustGet("hub").(*Hub)
 
-	var measures_input measures_data
+	var measures_input Measures_data
 	if err := c.ShouldBindJSON(&measures_input); err != nil {
 		c.JSON(http.StatusUnprocessableEntity, "Invalid json provided")
 		return
@@ -101,7 +101,7 @@ func AddMeasure(c *gin.Context) {
 		return
 	}
 	// Update clients registered for terrarium
-	hub.broadcast <- newMeasuers
+	hub.Broadcast <- newMeasuers
 }
 
 func RequestMeasures(c *gin.Context) {
@@ -132,21 +132,25 @@ func Status(c *gin.Context) {
 	})
 }
 
-type startSessionRequest struct {
+type StartSessionRequest struct {
 	TerrariumID string
+}
+
+type SessionKeyResponse struct {
+	SessionKey string `json:"SessionKey"`
 }
 
 func StartSession(c *gin.Context) {
 	dbConnection := c.MustGet("databaseConn").(*mongo.Database)
 	ctx := c.MustGet("databaseCtx").(context.Context)
 
-	var sessionRequest startSessionRequest
+	var sessionRequest StartSessionRequest
 	if err := c.ShouldBindJSON(&sessionRequest); err != nil {
 		c.JSON(http.StatusUnprocessableEntity, "Invalid json provided")
 		return
 	}
 
-	sessionKey, err := createSession(dbConnection, ctx, sessionRequest.TerrariumID)
+	sessionKey, err := CreateSession(dbConnection, ctx, sessionRequest.TerrariumID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, err)
 		return
@@ -156,7 +160,7 @@ func StartSession(c *gin.Context) {
 	})
 }
 
-type stopSessionRequest struct {
+type StopSessionRequest struct {
 	TerrariumID string
 	SessionKey  string
 }
@@ -165,7 +169,7 @@ func StopSession(c *gin.Context) {
 	dbConnection := c.MustGet("databaseConn").(*mongo.Database)
 	ctx := c.MustGet("databaseCtx").(context.Context)
 
-	var req stopSessionRequest
+	var req StopSessionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusUnprocessableEntity, "Invalid json provided")
 		return
