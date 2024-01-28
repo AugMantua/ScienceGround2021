@@ -25,7 +25,7 @@ impl MqttRouter {
         if let Some(handler) = self.get_handler_for_topic(topic) {
             handler(topic, payload);
         } else {
-            // Handle case where no handler is found, e.g., log an error
+            println!("No handler found for topic: {}", topic);
         }
     }
 
@@ -59,7 +59,7 @@ mod tests {
 
     use regex::Regex;
 
-    use crate::{MqttRouter, HandlerFunction};
+    use crate::{HandlerFunction, MqttRouter};
 
     #[test]
     fn test_new() {

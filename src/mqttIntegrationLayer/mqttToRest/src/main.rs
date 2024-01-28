@@ -1,30 +1,31 @@
-use std::sync::Arc;
+use mqttToRest::MqttHandler;
 use regex::Regex;
-use rumqttc::{MqttOptions, AsyncClient, QoS, EventLoop, Packet, Event};
+use std::sync::Arc;
 use tokio;
-use mqttRouter::{MqttRouter, HandlerFunction};
 
 #[tokio::main]
 async fn main() {
-    let mut router = MqttRouter::new();
-    router.add_handler(Regex::new(r"terraiums/.+/temperature").unwrap(), Arc::new(handle_temperature));
-    router.add_handler(Regex::new(r"terraiums/.+/humidity").unwrap(), Arc::new(handle_humidity));
-    router.add_handler(Regex::new(r"terraiums/.+/co2").unwrap(), Arc::new(handle_co2));
+    let mut handler = MqttHandler::new("mqttToRest", "localhost", 1883);
+    handler.add_handler(
+        Regex::new(r"terraiums/.+/temperature").unwrap(),
+        Arc::new(handle_temperature),
+    );
+    handler.add_handler(
+        Regex::new(r"terraiums/.+/humidity").unwrap(),
+        Arc::new(handle_humidity),
+    );
+    handler.add_handler(
+        Regex::new(r"terraiums/.+/co2").unwrap(),
+        Arc::new(handle_co2),
+    );
+    handler.subscribe("terrariums").await;
 
-    let mqttoptions = MqttOptions::new("client_id", "broker_address", 1883);
-    let (client, mut eventloop) = AsyncClient::new(mqttoptions, 10);
-
-    // Subscribe to topics
-    client.subscribe("terraiums/#", QoS::AtLeastOnce).await.unwrap();
-
-    loop {
-        match eventloop.poll().await.unwrap() {
-            Event::Incoming(Packet::Publish(p)) => {
-                router.route_message(&p.topic, &p.payload);
-            }
-            _ => {}
-        }
-    }
+    handler
+        .handle_events(mqttToRest::HandlerOptions {
+            verbose: true,
+            max_num_messages: None,
+        })
+        .await;
 }
 
 fn handle_temperature(topic: &str, payload: &[u8]) {
